@@ -6,7 +6,7 @@ from src.llm import Model2VecRepository
 from src.router import RouterRepository
 
 from src.app.types import REPOSITORY_TYPE
-from src.utils.decorators import singleton
+from src.utils import singleton
 
 @singleton
 class RepositoryManagementFactory:

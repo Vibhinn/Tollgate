@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from src.app.jobs.helpers import AddToCache
-from src.app.types import REDIS_STREAM_NAMES
 from src.app.jobs import BackgroundJobCreator
 from src.utils.config import Config
 from .installation import MiddlewareInstallation, APIRouterInstallation

@@ -1,7 +1,7 @@
 from src.app.adapters import ChatAdapter
 from .repository_factory import RepositoryManagementFactory
 
-from src.utils.decorators import singleton
+from src.utils import singleton
 
 from ..types import ADAPTER_TYPE
 

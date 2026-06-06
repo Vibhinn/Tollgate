@@ -1,7 +1,7 @@
 import functools
 import threading
 
-from src.utils.exceptions import PrivateMethodError
+from src.utils import PrivateMethodError
 
 def singleton(cls):
     """
