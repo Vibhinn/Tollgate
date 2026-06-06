@@ -1,3 +1,5 @@
+from typing import override
+
 from src.app.types import CacheJobData
 
 from .base import BaseHelper
@@ -5,9 +7,11 @@ from ...factory import RepositoryManagementFactory
 
 
 class AddToCache(BaseHelper):
+    @override
     def __init__(self, repo_factory: RepositoryManagementFactory):
         self.repo_factory = repo_factory
 
+    @override
     async def execute(self, data: CacheJobData):
         cache_type: str = data.get("cache_type")
 
@@ -21,9 +25,8 @@ class AddToCache(BaseHelper):
 
         elif cache_type == "semantic":
             embedding_repo = self.repo_factory.get_repo("EMBEDDING")
-            embeddings = await embedding_repo.create_vector_embeddings(data.get("user_message"))
+            embedding = await embedding_repo.create_vector_embeddings(data.get("user_message"))
 
             caching_repo = self.repo_factory.get_repo("VECTOR_CACHE")
-            await  caching_repo.save()
-
+            await caching_repo.save(embedding=embedding, user_message=data.get("user_message"), model_response=data.get("model_response"))
 
