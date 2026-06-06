@@ -13,7 +13,7 @@ class AddToCache(BaseHelper):
 
         if cache_type == "exact":
             caching_repo = self.repo_factory.get_repo("EXACT_CACHE")
-            await caching_repo.add_to_cache(
+            await caching_repo.save(
                 key=data.get("user_message"),
                 value=data.get("model_response"),
                 timeout=data.get("timeout")
@@ -24,6 +24,6 @@ class AddToCache(BaseHelper):
             embeddings = await embedding_repo.create_vector_embeddings(data.get("user_message"))
 
             caching_repo = self.repo_factory.get_repo("VECTOR_CACHE")
-            await  caching_repo.add_to_cache()
+            await  caching_repo.save()
 
 

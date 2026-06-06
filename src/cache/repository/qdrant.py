@@ -1,0 +1,54 @@
+from uuid import uuid4
+from typing import override
+
+from numpy import ndarray
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct
+
+from src.app.ports import VectorDBRepository
+
+
+class QdrantRepository(VectorDBRepository):
+    def __init__(self):
+        self.client = QdrantClient(
+            host="localhost",
+            port=6333
+        )
+        self.collection_name = "semantic_cache"
+
+    @override
+    async def save(
+        self,
+        embedding: ndarray,
+        user_message: str,
+        model_response: str
+    ):
+        self.client.upsert(
+            collection_name=self.collection_name,
+            points=[
+                PointStruct(
+                    id=str(uuid4()),
+                    vector=embedding.tolist(),
+                    payload={
+                        "user_message": user_message,
+                        "model_response": model_response
+                    }
+                )
+            ]
+        )
+
+    @override
+    async def search(self, embedding: ndarray):
+        results = self.client.query_points(
+            collection_name=self.collection_name,
+            query=embedding.tolist(),
+            limit=1,
+            score_threshold=0.9
+        )
+
+        if not results:
+            return None
+
+        return {
+            "response": results[0].payload["model_response"]
+        }

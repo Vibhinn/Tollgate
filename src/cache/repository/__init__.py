@@ -1,4 +1,4 @@
 from .redis import RedisRepository
-from .chromadb import ChromaDBRepository
+from .qdrant import QdrantRepository
 
-__all__ = ["RedisRepository", "ChromaDBRepository"]
+__all__ = ["RedisRepository", "QdrantRepository"]

@@ -4,7 +4,7 @@ from numpy import ndarray
 
 class VectorDBRepository(ABC):
     @abstractmethod
-    async def add_to_cache(self, message: str):
+    async def save(self, embedding: ndarray, user_message: str, model_response: str):
         ...
 
     @abstractmethod

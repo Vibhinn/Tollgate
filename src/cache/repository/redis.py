@@ -1,9 +1,9 @@
 from typing import override, Any
 
-from src.app.ports import TTLCacheRepository
+from src.app.ports import CacheRepository
 from ..connection import redis_client
 
-class RedisRepository(TTLCacheRepository):
+class RedisRepository(CacheRepository):
     def __init__(self):
         self.cache_conn = redis_client
 
@@ -14,5 +14,10 @@ class RedisRepository(TTLCacheRepository):
         return self.cache_conn.get(f"token{token}")
 
     @override
-    async def add_to_cache(self, key: Any, value: Any, timeout: int = 3600) -> None:
+    async def save(self, key: Any, value: Any, timeout: int | None = None) -> None:
         await self.cache_conn.set(key, value, ex=timeout)
+
+    @override
+    async def search(self, key: Any) -> Any:
+        pass
+

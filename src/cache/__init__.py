@@ -1,4 +1,4 @@
-from .repository import RedisRepository, ChromaDBRepository
+from .repository import RedisRepository, QdrantRepository
 
 from .connection import redis_client
-__all__ = ["RedisRepository", "redis_client", "ChromaDBRepository"]
+__all__ = ["RedisRepository", "redis_client", "QdrantRepository"]

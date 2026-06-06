@@ -1,7 +1,7 @@
 from typing import Literal, overload
 
-from src.app.ports import CreateVectorEmbedding, CacheRepository, VectorDBRepository
-from src.cache import RedisRepository, ChromaDBRepository
+from src.app.ports import CreateVectorEmbedding, VectorDBRepository
+from src.cache import RedisRepository, QdrantRepository
 from src.llm import Model2VecRepository
 from src.router import RouterRepository
 
@@ -13,7 +13,7 @@ class RepositoryManagementFactory:
     def __init__(self):
         self.__embedding_repo = Model2VecRepository()
         self.__redis_repo = RedisRepository()
-        self.__vector_db_repo = ChromaDBRepository()
+        self.__vector_db_repo = QdrantRepository()
         self.__router_repo = RouterRepository()
 
         self.__repo_map = {
@@ -31,7 +31,6 @@ class RepositoryManagementFactory:
     def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> RedisRepository: ...
     @overload
     def get_repo(self, repo_type: Literal["ROUTER"]) -> RouterRepository: ...
-
 
     def get_repo(self, repo_type: REPOSITORY_TYPE) -> object:
         return self.__repo_map[repo_type]

@@ -3,10 +3,9 @@ from abc import ABC, abstractmethod
 
 class CacheRepository(ABC):
     @abstractmethod
-    async def add_to_cache(self, key: Any, value: Any) -> None:
+    async def save(self, key: Any, value: Any, timeout: int) -> None:
         ...
 
-class TTLCacheRepository(CacheRepository):
     @abstractmethod
-    async def add_to_cache(self, key: Any, value: Any, timeout: int = 3600) -> None:
+    async def search(self, key: Any) -> Any:
         ...
