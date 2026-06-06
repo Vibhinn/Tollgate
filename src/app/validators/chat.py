@@ -1,14 +1,13 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class Message(BaseModel):
-    role: str
+    role: Literal["system", "developer", "user", "assistant"]
     content: str
 
 class ChatModel(BaseModel):
     model: str
     messages: list[Message]
-    temperature: float = 0.7
-    cache_type: Literal["semantic", "exact"]
-    model: str
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    cache_type: Literal["semantic", "exact"] | None = None

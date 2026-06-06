@@ -4,7 +4,7 @@ from typing import override
 
 from src.app.ports import LargeLanguageModel
 from src.utils import Config
-from ..providers import ROUTING_TABLE
+
 
 class OpenAIRepository(LargeLanguageModel):
     def __init__(self):
@@ -19,7 +19,7 @@ class OpenAIRepository(LargeLanguageModel):
     @override
     async def invoke(self, message: str):
         model_response = await self.openai_client.chat.completions.create(
-            
+
         )
 
 
