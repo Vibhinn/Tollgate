@@ -11,7 +11,7 @@ class RedisRepository(CacheRepository):
         return True if self.cache_conn.get(f"token:{token}") else False
 
     async def get_user_id(self, token: str) -> str:
-        return self.cache_conn.get(f"token{token}")
+        return self.cache_conn.get(f"token:{token}")
 
     @override
     async def save(self, key: Any, value: Any, timeout: int | None = None) -> None:
@@ -19,5 +19,5 @@ class RedisRepository(CacheRepository):
 
     @override
     async def search(self, key: Any) -> Any:
-        pass
+        return self.cache_conn.get(key)
 

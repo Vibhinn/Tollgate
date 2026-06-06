@@ -12,7 +12,7 @@ async def chat_complete(request: Request, user_requirement: ChatModel):
 
     repo_manager = app_state.repo_manager
     adapter_manager = app_state.adapter_manager
-    job_manager = app_state.job_manager
+    job_manager = app_state.job_scheduler
 
     chat_adapter = adapter_manager.get_adapter("CHAT")
     llm_router_repo = repo_manager.get_repo("ROUTER")
