@@ -1,4 +1,4 @@
-from app.adapters.chat_adapter import ChatAdapter
+from src.app.adapters import ChatAdapter
 from .repository_factory import RepositoryManagementFactory
 
 from src.utils.decorators import singleton

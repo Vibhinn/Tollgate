@@ -24,7 +24,7 @@ class Builder:
     def __setup_job_scheduler(self):
         scheduler = BackgroundJobCreator()
 
-        scheduler.register_helper(REDIS_STREAM_NAMES.RESPONSE_CACHE, AddToCache(self.app.state.repo_manager))
+        scheduler.register_helper("RESPONSE_CACHE", AddToCache(self.app.state.repo_manager))
         scheduler.start()
 
         self.app.state.job_scheduler = scheduler

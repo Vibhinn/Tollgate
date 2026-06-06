@@ -1,6 +1,7 @@
 import asyncio
 import threading
 from src.cache import redis_client
+from .helpers.base import BaseHelper
 from ..types import REDIS_STREAM_NAMES, CacheJobData
 
 from typing import Callable, overload
@@ -10,11 +11,11 @@ class BackgroundJobCreator:
 
     def __init__(self):
         self.redis_client = redis_client
-        self._helper_registry: dict[str, Callable] = {}
+        self._helper_registry: dict[str, BaseHelper] = {}
         self._worker_thread = threading.Thread(target=self._run_worker, daemon=True)
         self._loop = asyncio.new_event_loop()
 
-    def register_helper(self, stream_name: REDIS_STREAM_NAMES, helper: Callable):
+    def register_helper(self, stream_name: REDIS_STREAM_NAMES, helper: BaseHelper):
         self._helper_registry[stream_name] = helper
 
     def start(self):
@@ -33,7 +34,7 @@ class BackgroundJobCreator:
                 for entry_id, data in entries:
                     helper = self._helper_registry.get(stream)
                     if helper:
-                        await helper(data)
+                        await helper.execute(data)
 
     @overload
     async def create_job(self, stream_name: REDIS_STREAM_NAMES.RESPONSE_CACHE, data: CacheJobData) -> None:

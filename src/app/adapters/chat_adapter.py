@@ -1,6 +1,6 @@
 from typing import Literal
 
-from app.factory.repository_factory import RepositoryManagementFactory
+from src.app.factory import RepositoryManagementFactory
 
 class ChatAdapter:
     def __init__(self, repo_manager: RepositoryManagementFactory):

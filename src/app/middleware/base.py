@@ -3,4 +3,5 @@ class BaseMiddleware:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        BaseMiddleware.registry.append(cls)
+        if cls not in BaseMiddleware.registry:
+            BaseMiddleware.registry.append(cls)
