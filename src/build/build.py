@@ -18,7 +18,7 @@ class Builder:
 
         repo_manager = RepositoryManagementFactory()
         adapter_manager = AdapterManagementFactory(repo_manager)
-        job_manager = self.__setup_job_manager()
+        job_manager = self.__setup_job_manager(repo_manager)
 
         self.app.state.application = ApplicationState(
             repo_manager=repo_manager,
@@ -26,10 +26,10 @@ class Builder:
             job_manager=job_manager
         )
 
-    def __setup_job_manager(self) -> BackgroundJobCreator:
+    def __setup_job_manager(self, repo_manager: RepositoryManagementFactory) -> BackgroundJobCreator:
         scheduler = BackgroundJobCreator()
 
-        scheduler.register_helper("RESPONSE_CACHE", AddToCache(self.app.state.repo_manager))
+        scheduler.register_helper("RESPONSE_CACHE", AddToCache(repo_manager))
         scheduler.start()
 
         return scheduler
