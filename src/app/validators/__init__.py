@@ -1,3 +1,3 @@
-from .chat import ChatModel
+from .chat import ChatModel, Message
 
-__all__ = ["ChatModel"]
+__all__ = ["ChatModel", "Message"]

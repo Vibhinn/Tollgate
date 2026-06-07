@@ -1,3 +1,5 @@
+from typing import overload, Literal
+
 from src.app.adapters import ChatAdapter
 from .repository_factory import RepositoryManagementFactory
 
@@ -14,5 +16,10 @@ class AdapterManagementFactory:
             "CHAT": self.__chat_adapter
         }
 
-    async def get_adapter(self, adapter_name: ADAPTER_TYPE):
+    @overload
+    def get_adapter(self, adapter_name: Literal["CHAT"]) -> ChatAdapter: ...
+    @overload
+    def get_adapter(self, adapter_name: Literal["IMAGE"]) -> ChatAdapter: ...
+
+    def get_adapter(self, adapter_name: ADAPTER_TYPE):
         return self.__adapter_map.get(adapter_name)

@@ -6,9 +6,6 @@ ADAPTER_TYPE = Literal["CHAT"]
 CONFIGURATION_SECTIONS = Literal["OPENAI", "ANTHROPIC", "LLAMA"]
 CONFIGURATION_OPTIONS = Literal["ENDPOINT", "API_KEY"]
 
+CACHE_TYPE = Literal["EXACT", "SEMANTIC"]
 
-class CacheJobData(TypedDict):
-    cache_type: Literal["exact", "semantic"]
-    user_message: str
-    model_response: str
-    timeout: int
+

@@ -4,7 +4,7 @@ from typing import override
 
 from src.app.ports import LargeLanguageModel
 from src.utils import Config
-
+from src.app.validators import Message
 
 class OpenAIRepository(LargeLanguageModel):
     def __init__(self):
@@ -17,9 +17,11 @@ class OpenAIRepository(LargeLanguageModel):
         )
 
     @override
-    async def invoke(self, message: str):
+    async def invoke(self, message: list[Message], model_name: str):
         model_response = await self.openai_client.chat.completions.create(
-
+            model=model_name,
+            messages=message
         )
+        return model_response.choices[0].message.content
 
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from ..state import ApplicationState
 from ..types import CacheJobData
 from ..validators import ChatModel
 
@@ -8,11 +9,11 @@ chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 @chat_api_router.post(path="/chat/completions", tags=["chat"])
 async def chat_complete(request: Request, user_requirement: ChatModel):
-    app_state = request.app.state
+    app_state: ApplicationState = request.app.state.application
 
     repo_manager = app_state.repo_manager
     adapter_manager = app_state.adapter_manager
-    job_manager = app_state.job_scheduler
+    job_manager = app_state.job_manager
 
     chat_adapter = adapter_manager.get_adapter("CHAT")
     llm_router_repo = repo_manager.get_repo("ROUTER")
@@ -31,12 +32,16 @@ async def chat_complete(request: Request, user_requirement: ChatModel):
             }
         )
 
-    model_response = await llm_router_repo.invoke_model(model_name=requested_model, message=user_message)
+    model_response = await llm_router_repo.invoke_model(model_name=requested_model, message=user_requirement.messages)
 
     if caching_requested:
         caching_timeout_header = request.headers.get("X-Cache-TTL")
         cache_timeout: int = int(caching_timeout_header) if caching_timeout_header else 3600
-        await job_manager.create_job("RESPONSE_CACHE", CacheJobData(cache_type=user_requirement.cache_type, user_message=user_message, model_response=model_response, timeout=cache_timeout))
+        await job_manager.create_job("RESPONSE_CACHE", CacheJobData(
+            cache_type=user_requirement.cache_type if user_requirement.cache_type else "EXACT",
+            user_message=user_message, model_response=model_response,
+            timeout=cache_timeout)
+                                     )
 
     return JSONResponse(
         status_code=200,
