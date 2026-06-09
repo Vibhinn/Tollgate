@@ -4,5 +4,5 @@ from .params import CACHE_TYPE
 class CacheJobData(TypedDict):
     cache_type: CACHE_TYPE
     user_message: str
-    model_response: str
+    model_response: object
     timeout: int

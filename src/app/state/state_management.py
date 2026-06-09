@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
-from src.app.jobs import BackgroundJobCreator
+from src.jobs import BackgroundJobCreator
 
 @dataclass
 class ApplicationState:

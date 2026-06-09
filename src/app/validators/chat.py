@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from ..types import CACHE_TYPE
+from src.utils.types import CACHE_TYPE
 
 class Message(BaseModel):
     role: Literal["system", "developer", "user", "assistant"]

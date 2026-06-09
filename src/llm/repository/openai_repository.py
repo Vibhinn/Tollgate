@@ -1,20 +1,12 @@
-from openai import AsyncOpenAI
-
 from typing import override
 
 from src.app.ports import LargeLanguageModel
-from src.utils import Config
+from ..connection import LLMConnection
 from src.app.validators import Message
 
 class OpenAIRepository(LargeLanguageModel):
     def __init__(self):
-        self.config = Config()
-        self.api_key = self.config.get_config("OPENAI", "API_KEY")
-        self.api_endpoint = self.config.get_config("OPENAI", "ENDPOINT")
-
-        self.openai_client = AsyncOpenAI(
-            api_key=self.api_key
-        )
+        self.openai_client = LLMConnection.get_connection("OPENAI")
 
     @override
     async def invoke(self, message: list[Message], model_name: str):

@@ -5,7 +5,7 @@ from src.cache import RedisRepository, QdrantRepository
 from src.llm import Model2VecRepository
 from src.router import RouterRepository
 
-from src.app.types import REPOSITORY_TYPE
+from src.utils.types import REPOSITORY_TYPE
 from src.utils import singleton
 
 @singleton

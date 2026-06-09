@@ -1,16 +1,16 @@
 import asyncio
 import threading
-from src.cache import redis_client
-from .helpers.base import BaseHelper
-from ..types import REDIS_STREAM_NAMES, CacheJobData
+from src.cache import CacheConnection
+from ..helpers.base import BaseHelper
+from src.utils.types import REDIS_STREAM_NAMES, CacheJobData
 
-from typing import Callable, overload
+from typing import overload
 
 class BackgroundJobCreator:
     """Creates redis stream jobs and runs a background worker to process them"""
 
     def __init__(self):
-        self.redis_client = redis_client
+        self.redis_client = CacheConnection.get_connection("EXACT")
         self._helper_registry: dict[str, BaseHelper] = {}
         self._worker_thread = threading.Thread(target=self._run_worker, daemon=True)
         self._loop = asyncio.new_event_loop()

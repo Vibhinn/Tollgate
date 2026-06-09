@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from ..state import ApplicationState
-from ..types import CacheJobData
+from src.utils.types import CacheJobData
 from ..validators import ChatModel
 
 chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
@@ -39,9 +39,10 @@ async def chat_complete(request: Request, user_requirement: ChatModel):
         cache_timeout: int = int(caching_timeout_header) if caching_timeout_header else 3600
         await job_manager.create_job("RESPONSE_CACHE", CacheJobData(
             cache_type=user_requirement.cache_type if user_requirement.cache_type else "EXACT",
-            user_message=user_message, model_response=model_response,
+            user_message=user_message,
+            model_response=model_response,
             timeout=cache_timeout)
-                                     )
+        )
 
     return JSONResponse(
         status_code=200,

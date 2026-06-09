@@ -1,6 +1,6 @@
 from configparser import ConfigParser
 
-from src.app.types import CONFIGURATION_OPTIONS, CONFIGURATION_SECTIONS
+from src.utils.types import CONFIGURATION_OPTIONS, CONFIGURATION_SECTIONS
 
 class Config:
     def __init__(self):

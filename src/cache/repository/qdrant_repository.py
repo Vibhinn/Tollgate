@@ -2,7 +2,7 @@ from uuid import uuid4
 from typing import override
 
 from numpy import ndarray
-from qdrant_client import QdrantClient
+from ..connection import CacheConnection
 from qdrant_client.models import PointStruct
 
 from src.app.ports import VectorDBRepository
@@ -10,10 +10,7 @@ from src.app.ports import VectorDBRepository
 
 class QdrantRepository(VectorDBRepository):
     def __init__(self):
-        self.client = QdrantClient(
-            host="localhost",
-            port=6333
-        )
+        self.client = CacheConnection.get_connection("SEMANTIC")
         self.collection_name = "semantic_cache"
 
     @override

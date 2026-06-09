@@ -1,9 +1,9 @@
 from typing import override
 
-from src.app.types import CacheJobData
+from src.utils.types import CacheJobData
 
 from .base import BaseHelper
-from ...factory import RepositoryManagementFactory
+from src.app.factory import RepositoryManagementFactory
 
 
 class AddToCache(BaseHelper):

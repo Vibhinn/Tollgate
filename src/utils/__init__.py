@@ -1,5 +1,4 @@
 from .configuration import Config
-from .decorators import singleton, private
-from .exception import PrivateMethodError
+from .decorators import singleton
 
-__all__ = ["Config", "singleton", "private", "PrivateMethodError"]
+__all__ = ["Config", "singleton"]

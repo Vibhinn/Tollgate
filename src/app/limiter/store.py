@@ -1,15 +1,16 @@
 import threading
 from collections import defaultdict
 
-from src.utils.config import configurations
+from src.utils.configuration import Config
 from .bucket import TokenBucket
 
 class RateLimiterStore:
     def __init__(self):
+        self.config = Config()
 
-        self.max_tokens = int(configurations.get_config("RATE_LIMITER", "MAX_TOKENS"))
-        self.refill_rate = int(configurations.get_config("RATE_LIMITER", "REFILL_RATE"))
-        self.time_interval = float(configurations.get_config("RATE_LIMITER", "TIME_INTERVAL"))
+        self.max_tokens = int(self.config.get_config("RATE_LIMITER", "MAX_TOKENS"))
+        self.refill_rate = int(self.config.get_config("RATE_LIMITER", "REFILL_RATE"))
+        self.time_interval = float(self.config.get_config("RATE_LIMITER", "TIME_INTERVAL"))
 
         self.buckets: dict[str, TokenBucket] = defaultdict(lambda: TokenBucket(
             max_tokens=self.max_tokens,

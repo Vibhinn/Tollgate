@@ -1,11 +1,16 @@
 from fastapi import FastAPI
 
 from src.app.state import ApplicationState
-from src.app.jobs.helpers import AddToCache
-from src.app.jobs import BackgroundJobCreator
-from src.utils import Config
-from .installation import MiddlewareInstallation, APIRouterInstallation
+from src.jobs.helpers import AddToCache
+from src.jobs import BackgroundJobCreator
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
+
+from src.utils import Config
+
+from src.cache import CacheConnection
+from src.llm import LLMConnection
+
+from .installation import MiddlewareInstallation, APIRouterInstallation
 
 class Builder:
     def __init__(self, app: FastAPI):
@@ -15,6 +20,7 @@ class Builder:
     def build_and_initialize_app(self):
         MiddlewareInstallation.install_middleware(self.app)
         APIRouterInstallation.install_api_routers(self.app)
+        self.__create_and_initialize_connections()
 
         repo_manager = RepositoryManagementFactory()
         adapter_manager = AdapterManagementFactory(repo_manager)
@@ -33,4 +39,14 @@ class Builder:
         scheduler.start()
 
         return scheduler
+
+    def __create_and_initialize_connections(self):
+        CacheConnection.initialize()
+        LLMConnection.initialize(
+            openai_key=self.config.get_config("OPENAI", "API_KEY"),
+            anthropic_key=self.config.get_config("ANTHROPIC", "API_KEY"),
+            gemini_key=self.config.get_config("GEMINI", "API_KEY"),
+            model2vec_model=self.config.get_config("EMBEDDING", "MODEL_NAME")
+        )
+
 

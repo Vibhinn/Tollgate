@@ -5,7 +5,7 @@ from .repository_factory import RepositoryManagementFactory
 
 from src.utils import singleton
 
-from ..types import ADAPTER_TYPE
+from src.utils.types import ADAPTER_TYPE
 
 @singleton
 class AdapterManagementFactory:
