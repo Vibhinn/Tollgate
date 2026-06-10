@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from src.app.state import ApplicationState
 from src.jobs.helpers import AddToCache
-from src.jobs import BackgroundJobCreator
+from src.jobs import RedisStreamRepository
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
 
 from src.utils import Config
@@ -32,8 +32,8 @@ class Builder:
             job_manager=job_manager
         )
 
-    def __setup_job_manager(self, repo_manager: RepositoryManagementFactory) -> BackgroundJobCreator:
-        scheduler = BackgroundJobCreator()
+    def __setup_job_manager(self, repo_manager: RepositoryManagementFactory) -> RedisStreamRepository:
+        scheduler = RedisStreamRepository()
 
         scheduler.register_helper("RESPONSE_CACHE", AddToCache(repo_manager))
         scheduler.start()

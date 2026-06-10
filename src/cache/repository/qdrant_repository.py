@@ -5,10 +5,10 @@ from numpy import ndarray
 from ..connection import CacheConnection
 from qdrant_client.models import PointStruct
 
-from src.app.ports import VectorDBRepository
+from src.app.ports import VectorDBRepositoryInterface
 
 
-class QdrantRepository(VectorDBRepository):
+class QdrantRepository(VectorDBRepositoryInterface):
     def __init__(self):
         self.client = CacheConnection.get_connection("SEMANTIC")
         self.collection_name = "semantic_cache"

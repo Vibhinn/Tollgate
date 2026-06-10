@@ -1,10 +1,10 @@
 from typing import override
 
-from src.app.ports import LargeLanguageModel
+from src.app.ports import LLMRepositoryInterface
 from ..connection import LLMConnection
 from src.app.validators import Message
 
-class OpenAIRepository(LargeLanguageModel):
+class OpenAIRepository(LLMRepositoryInterface):
     def __init__(self):
         self.openai_client = LLMConnection.get_connection("OPENAI")
 

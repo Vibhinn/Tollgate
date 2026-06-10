@@ -4,13 +4,13 @@ from starlette.responses import JSONResponse
 from .base import BaseMiddleware
 from src.cache import RedisRepository
 from src.app.endpoints import EXEMPT_PATHS
-from ..ports import CacheRepository
+from ..ports import CacheRepositoryInterface
 
 
 class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
-        self.redis_repo: CacheRepository = RedisRepository()
+        self.redis_repo: CacheRepositoryInterface = RedisRepository()
         self.exempt_paths = EXEMPT_PATHS
 
         @self.app.middleware("http")

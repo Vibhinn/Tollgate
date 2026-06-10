@@ -1,11 +1,11 @@
 from typing import override
 
-from src.app.ports import CreateVectorEmbedding
+from src.app.ports import VectorEmbeddingRepositoryInterface
 from ..connection import LLMConnection
 
 from numpy import ndarray
 
-class Model2VecRepository(CreateVectorEmbedding):
+class Model2VecRepository(VectorEmbeddingRepositoryInterface):
     def __init__(self):
         self.embedding_model = LLMConnection.get_connection("EMBEDDING")
     @override

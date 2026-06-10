@@ -1,6 +1,6 @@
 from typing import Literal, overload
 
-from src.app.ports import CreateVectorEmbedding, VectorDBRepository
+from src.app.ports import VectorEmbeddingRepositoryInterface, VectorDBRepositoryInterface
 from src.cache import RedisRepository, QdrantRepository
 from src.llm import Model2VecRepository
 from src.router import RouterRepository
@@ -24,9 +24,9 @@ class RepositoryManagementFactory:
         }
 
     @overload
-    def get_repo(self, repo_type: Literal["EMBEDDING"]) -> CreateVectorEmbedding: ...
+    def get_repo(self, repo_type: Literal["EMBEDDING"]) -> VectorEmbeddingRepositoryInterface: ...
     @overload
-    def get_repo(self, repo_type: Literal["VECTOR_CACHE"]) -> VectorDBRepository: ...
+    def get_repo(self, repo_type: Literal["VECTOR_CACHE"]) -> VectorDBRepositoryInterface: ...
     @overload
     def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> RedisRepository: ...
     @overload

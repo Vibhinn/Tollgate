@@ -1,12 +1,15 @@
 import asyncio
+import json
 import threading
 from src.cache import CacheConnection
 from ..helpers.base import BaseHelper
 from src.utils.types import REDIS_STREAM_NAMES, CacheJobData
 
+from src.app.ports import JobRepositoryInterface
+
 from typing import overload
 
-class BackgroundJobCreator:
+class RedisStreamRepository(JobRepositoryInterface):
     """Creates redis stream jobs and runs a background worker to process them"""
 
     def __init__(self):
@@ -45,4 +48,4 @@ class BackgroundJobCreator:
         ...
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
-        await self.redis_client.xadd(stream_name, data)
+        await self.redis_client.xadd(stream_name, {"payload": json.dumps(data)})

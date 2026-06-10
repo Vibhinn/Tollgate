@@ -1,7 +1,7 @@
 from typing import Any
 from abc import ABC, abstractmethod
 
-class CacheRepository(ABC):
+class CacheRepositoryInterface(ABC):
     @abstractmethod
     async def save(self, key: Any, value: Any, timeout: int) -> None:
         ...

@@ -1,8 +1,8 @@
-from src.app.ports import LargeLanguageModel
+from src.app.ports import LLMRepositoryInterface
 from ..connection import LLMConnection
 
 
-class AnthropicRepository(LargeLanguageModel):
+class AnthropicRepository(LLMRepositoryInterface):
     def __init__(self):
         self.anthropic_client = LLMConnection.get_connection("ANTHROPIC")
 

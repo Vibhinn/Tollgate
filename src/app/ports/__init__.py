@@ -1,6 +1,8 @@
-from .cache import CacheRepository
-from .vector_db import VectorDBRepository
-from .embeddings import CreateVectorEmbedding
-from .models import LargeLanguageModel
+from .cache import CacheRepositoryInterface
+from .vector_db import VectorDBRepositoryInterface
+from .embeddings import VectorEmbeddingRepositoryInterface
+from .models import LLMRepositoryInterface
+from .jobs import JobRepositoryInterface
 
-__all__ = ["CacheRepository", "VectorDBRepository", "CreateVectorEmbedding", "LargeLanguageModel"]
+__all__ = ["CacheRepositoryInterface", "VectorDBRepositoryInterface", "VectorEmbeddingRepositoryInterface",
+           "LLMRepositoryInterface", "JobRepositoryInterface"]

@@ -1,9 +1,9 @@
 from typing import override, Any
 
-from src.app.ports import CacheRepository
+from src.app.ports import CacheRepositoryInterface
 from ..connection import CacheConnection
 
-class RedisRepository(CacheRepository):
+class RedisRepository(CacheRepositoryInterface):
     def __init__(self):
         self.cache_conn = CacheConnection.get_connection("EXACT")
 

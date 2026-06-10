@@ -6,14 +6,14 @@ from starlette.responses import JSONResponse
 from .base import BaseMiddleware
 from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
-from ..ports import CacheRepository
+from ..ports import CacheRepositoryInterface
 
 
 class RateLimitingMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
         self.rate_limiter = RateLimiterStore()
-        self.redis_repo: CacheRepository = RedisRepository()
+        self.redis_repo: CacheRepositoryInterface = RedisRepository()
 
         @self.app.middleware("http")
         async def rate_limit(request: Request, call_next):

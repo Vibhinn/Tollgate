@@ -1,3 +1,3 @@
-from .repository.redis_stream import BackgroundJobCreator
+from .repository.redis_stream import RedisStreamRepository
 
-__all__ = ["BackgroundJobCreator"]
+__all__ = ["RedisStreamRepository"]
