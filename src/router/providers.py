@@ -16,9 +16,4 @@ ROUTING_TABLE = {
     "gemini-2.0-flash": {"provider": "gemini", "model": "gemini-2.0-flash"},
     "gemini-2.0-flash-lite": {"provider": "gemini", "model": "gemini-2.0-flash-lite"},
     "gemini-1.5-pro": {"provider": "gemini", "model": "gemini-1.5-pro"},
-
-    # Aliases
-    "fast": {"provider": "openai", "model": "gpt-4o-mini"},
-    "smart": {"provider": "anthropic", "model": "claude-opus-4-6"},
-    "cheap": {"provider": "gemini", "model": "gemini-2.0-flash-lite"},
 }

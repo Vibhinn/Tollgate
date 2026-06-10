@@ -1,6 +1,10 @@
 from typing import Literal, overload
 
-from src.app.ports import VectorEmbeddingRepositoryInterface, VectorDBRepositoryInterface
+from src.jobs import RedisStreamRepository
+from src.app.ports import (VectorEmbeddingRepositoryInterface,
+                           VectorDBRepositoryInterface,
+                           JobQueueRepositoryInterface,
+                           CacheRepositoryInterface)
 from src.cache import RedisRepository, QdrantRepository
 from src.llm import Model2VecRepository
 from src.router import RouterRepository
@@ -15,12 +19,14 @@ class RepositoryManagementFactory:
         self.__redis_repo = RedisRepository()
         self.__vector_db_repo = QdrantRepository()
         self.__router_repo = RouterRepository()
+        self.__job_queue_repo = RedisStreamRepository()
 
         self.__repo_map = {
             "EMBEDDING": self.__embedding_repo,
             "VECTOR_CACHE": self.__vector_db_repo,
             "EXACT_CACHE": self.__redis_repo,
-            "ROUTER": self.__router_repo
+            "ROUTER": self.__router_repo,
+            "JOB": self.__job_queue_repo
         }
 
     @overload
@@ -28,9 +34,11 @@ class RepositoryManagementFactory:
     @overload
     def get_repo(self, repo_type: Literal["VECTOR_CACHE"]) -> VectorDBRepositoryInterface: ...
     @overload
-    def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> RedisRepository: ...
+    def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> CacheRepositoryInterface: ...
     @overload
     def get_repo(self, repo_type: Literal["ROUTER"]) -> RouterRepository: ...
+    @overload
+    def get_repo(self, repo_type: Literal["JOB"]) -> JobQueueRepositoryInterface: ...
 
     def get_repo(self, repo_type: REPOSITORY_TYPE) -> object:
         return self.__repo_map[repo_type]

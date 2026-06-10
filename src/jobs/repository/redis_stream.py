@@ -5,11 +5,11 @@ from src.cache import CacheConnection
 from ..helpers.base import BaseHelper
 from src.utils.types import REDIS_STREAM_NAMES, CacheJobData
 
-from src.app.ports import JobRepositoryInterface
+from src.app.ports import JobQueueRepositoryInterface
 
 from typing import overload
 
-class RedisStreamRepository(JobRepositoryInterface):
+class RedisStreamRepository(JobQueueRepositoryInterface):
     """Creates redis stream jobs and runs a background worker to process them"""
 
     def __init__(self):

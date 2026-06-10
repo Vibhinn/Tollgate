@@ -16,3 +16,6 @@ class RouterRepository:
 
         model_response = await repository.invoke(message, model_name)
         return model_response
+
+    async def get_best_model(self, requirement: str) -> str:
+        pass

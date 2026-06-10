@@ -11,12 +11,8 @@ chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 async def chat_complete(request: Request, user_requirement: ChatModel):
     app_state: ApplicationState = request.app.state.application
 
-    repo_manager = app_state.repo_manager
     adapter_manager = app_state.adapter_manager
-    job_manager = app_state.job_manager
-
     chat_adapter = adapter_manager.get_adapter("CHAT")
-    llm_router_repo = repo_manager.get_repo("ROUTER")
 
     user_message: str = user_requirement.messages[-1].content
     requested_model: str = user_requirement.model
@@ -32,12 +28,12 @@ async def chat_complete(request: Request, user_requirement: ChatModel):
             }
         )
 
-    model_response = await llm_router_repo.invoke_model(model_name=requested_model, message=user_requirement.messages)
+    model_response = await chat_adapter.query_llm(model_name=requested_model, message=user_requirement.messages)
 
     if caching_requested:
         caching_timeout_header = request.headers.get("X-Cache-TTL")
         cache_timeout: int = int(caching_timeout_header) if caching_timeout_header else 3600
-        await job_manager.create_job("RESPONSE_CACHE", CacheJobData(
+        await chat_adapter.add_job_to_queue("RESPONSE_CACHE", CacheJobData(
             cache_type=user_requirement.cache_type if user_requirement.cache_type else "EXACT",
             user_message=user_message,
             model_response=model_response,

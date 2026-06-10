@@ -5,3 +5,4 @@ class LLMPerformanceCalculator:
         self.connection_manager = LLMConnection()
 
     async def calculate_performance(self):
+        pass
