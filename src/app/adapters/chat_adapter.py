@@ -1,8 +1,8 @@
-from typing import TypedDict
-
 from src.app.validators import Message
 from src.app.factory import RepositoryManagementFactory
 from src.router import RouterRepository
+
+from src.utils.types import CacheJobData
 
 class ChatAdapter:
     def __init__(self, repo_manager: RepositoryManagementFactory):
@@ -27,6 +27,7 @@ class ChatAdapter:
             return await self.router_repo.invoke_model(model_name=model, message=message)
         return await self.router_repo.invoke_model(model_name=model_name, message=message)
 
-    async def add_job_to_queue(self, collection_name: str, data: object):
+    async def add_job_to_queue(self, collection_name: str, data: dict):
         job_queue_manager = self.repo_manager.get_repo("JOB")
-        await job_queue_manager.create_job(collection_name, data)
+        validated_data = CacheJobData(**data)
+        await job_queue_manager.create_job(collection_name, validated_data)
