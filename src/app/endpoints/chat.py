@@ -1,18 +1,15 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
-from ..state import ApplicationState
+from ..injector import get_chat_adapter
+
+from ..adapters import ChatAdapter
 from ..validators import ChatModel
 
 chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 @chat_api_router.post(path="/chat/completions", tags=["chat"])
-async def chat_complete(request: Request, user_requirement: ChatModel):
-    app_state: ApplicationState = request.app.state.application
-
-    adapter_manager = app_state.adapter_manager
-    chat_adapter = adapter_manager.get_adapter("CHAT")
-
+async def chat_complete(request: Request, user_requirement: ChatModel, chat_adapter: ChatAdapter = Depends(get_chat_adapter)):
     user_message: str = user_requirement.messages[-1].content
     requested_model: str = user_requirement.model
     caching_requested: bool = bool(user_requirement.cache_type)

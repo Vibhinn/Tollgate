@@ -1,16 +1,17 @@
 from fastapi import FastAPI
 
-from src.app.ports import JobQueueRepositoryInterface
-from src.jobs import JobQueueConnection
-from src.app.state import ApplicationState
-from src.jobs.helpers import AddToCache
-from src.jobs import RedisStreamRepository
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
+from src.app.injector import container
+from src.app.adapters import ChatAdapter
+
+from src.jobs import JobQueueConnection
+from src.jobs import RedisStreamRepository
+from src.jobs.helpers import AddToCache
 
 from src.utils import Config
-
 from src.cache import CacheConnection
 from src.llm import LLMConnection
+
 
 from .installation import MiddlewareInstallation, APIRouterInstallation
 
@@ -23,24 +24,20 @@ class Builder:
         MiddlewareInstallation.install_middleware(self.app)
         APIRouterInstallation.install_api_routers(self.app)
         self.__create_and_initialize_connections()
+        self.__register_dependencies()
+        self.__setup_job_manager()
 
-        repo_manager = RepositoryManagementFactory()
-        adapter_manager = AdapterManagementFactory(repo_manager)
-        job_manager = self.__setup_job_manager(repo_manager)
+    def __register_dependencies(self):
+        container.register(RepositoryManagementFactory, lambda: RepositoryManagementFactory())
+        container.register(AdapterManagementFactory,
+                           lambda: AdapterManagementFactory(container.resolve(RepositoryManagementFactory)))
+        container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory)))
 
-        self.app.state.application = ApplicationState(
-            repo_manager=repo_manager,
-            adapter_manager=adapter_manager,
-            job_manager=job_manager
-        )
-
-    def __setup_job_manager(self, repo_manager: RepositoryManagementFactory) -> JobQueueRepositoryInterface:
+    def __setup_job_manager(self):
         scheduler = RedisStreamRepository()
-
-        scheduler.register_helper("RESPONSE_CACHE", AddToCache(repo_manager))
+        scheduler.register_helper("RESPONSE_CACHE", AddToCache(container.resolve(RepositoryManagementFactory)))
         scheduler.start()
-
-        return scheduler
+        container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 
     def __create_and_initialize_connections(self):
         CacheConnection.initialize()
