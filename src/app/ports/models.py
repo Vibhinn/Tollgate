@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from src.app.validators import Message
+from src.utils.types import Message
 
 class LLMRepositoryInterface(ABC):
     @abstractmethod

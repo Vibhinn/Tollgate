@@ -1,17 +1,17 @@
 from fastapi import FastAPI
 
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
-from src.app.injector import container
 from src.app.adapters import ChatAdapter
+
+from src.app.injector import container
 
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository
 from src.jobs.helpers import AddToCache
 
-from src.utils import Config
+from src.utils.config import Config
 from src.cache import CacheConnection
 from src.llm import LLMConnection
-
 
 from .installation import MiddlewareInstallation, APIRouterInstallation
 
@@ -32,10 +32,18 @@ class Builder:
         container.register(AdapterManagementFactory,
                            lambda: AdapterManagementFactory(container.resolve(RepositoryManagementFactory)))
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory)))
+        container.register(Config, lambda : Config())
 
     def __setup_job_manager(self):
+        repo_factory = container.resolve(RepositoryManagementFactory)
+        add_to_cache = AddToCache(
+            exact_cache=repo_factory.get_repo("EXACT_CACHE"),
+            embedding_repo=repo_factory.get_repo("EMBEDDING"),
+            vector_cache=repo_factory.get_repo("VECTOR_CACHE")
+        )
+
         scheduler = RedisStreamRepository()
-        scheduler.register_helper("RESPONSE_CACHE", AddToCache(container.resolve(RepositoryManagementFactory)))
+        scheduler.register_helper("RESPONSE_CACHE", add_to_cache)
         scheduler.start()
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 

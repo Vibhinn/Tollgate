@@ -1,7 +1,7 @@
 import threading
 from collections import defaultdict
 
-from src.utils.configuration import Config
+from src.utils.config import Config
 from .bucket import TokenBucket
 
 class RateLimiterStore:

@@ -1,1 +1,0 @@
-EXEMPT_PATHS: set = {"/docs", "/openapi.json"}

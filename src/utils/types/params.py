@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Literal
 
 REDIS_STREAM_NAMES = Literal["RESPONSE_CACHE"]
 REPOSITORY_TYPE = Literal["EMBEDDING", "DATABASE", "VECTOR_DB", "CACHE", "ROUTER"]

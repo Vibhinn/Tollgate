@@ -1,5 +1,5 @@
-from src.app.validators import Message
-from .providers import ROUTING_TABLE
+from src.utils.types import Message
+from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
 class RouterRepository:

@@ -1,7 +1,6 @@
 from src.app.validators import Message
 from src.app.factory import RepositoryManagementFactory
 from src.router import RouterRepository
-
 from src.utils.types import CacheJobData
 
 class ChatAdapter:

@@ -1,13 +1,7 @@
-from typing import Literal
-
 from pydantic import BaseModel, Field, field_validator
 
-from src.utils.types import CACHE_TYPE
-from src.router import ROUTING_TABLE
-
-class Message(BaseModel):
-    role: Literal["system", "developer", "user", "assistant"]
-    content: str
+from src.utils.types import CACHE_TYPE, Message
+from src.utils.config import ROUTING_TABLE
 
 class ChatModel(BaseModel):
     model: str
