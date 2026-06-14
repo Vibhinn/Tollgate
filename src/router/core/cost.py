@@ -5,3 +5,4 @@ class LLMCostCalculator:
         self.connection_manager = LLMConnection()
 
     async def calculate_cost(self):
+        pass

@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 
 from ..ports import JobQueueRepositoryInterface
-from ..factory import RepositoryManagementFactory, AdapterManagementFactory
+from ..factory import ApplicationRepositoryFactory
 
 @dataclass
 class ApplicationState:
-    repo_manager: RepositoryManagementFactory
-    adapter_manager: AdapterManagementFactory
+    repo_manager: ApplicationRepositoryFactory
     job_manager: JobQueueRepositoryInterface

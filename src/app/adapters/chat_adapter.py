@@ -1,17 +1,19 @@
 from ..ports import JobQueueRepositoryInterface
 from ..validators import Message
-from ..factory import RepositoryManagementFactory
+from ..factory import ApplicationRepositoryFactory
 
 from src.router import RouterRepository
 from src.utils.types import CacheJobData
 
 class ChatAdapter:
-    def __init__(self, repo_manager: RepositoryManagementFactory, job_manager: JobQueueRepositoryInterface):
+    def __init__(self, repo_manager: ApplicationRepositoryFactory,
+                 job_manager: JobQueueRepositoryInterface,
+                 router_manager: RouterRepository):
         self.repo_manager = repo_manager
         self.embedding_repo = self.repo_manager.get_repo("EMBEDDING")
         self.vector_db_repo = self.repo_manager.get_repo("VECTOR_CACHE")
         self.kv_cache_repo = self.repo_manager.get_repo("EXACT_CACHE")
-        self.router_repo = RouterRepository()
+        self.router_repo = router_manager
         self.job_queue_manager = job_manager
 
     async def check_cache(self, message: str) -> str:

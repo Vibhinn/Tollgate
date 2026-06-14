@@ -3,9 +3,9 @@ from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
 class RouterRepository:
-    def __init__(self):
+    def __init__(self, llm_repo_factory: LLMRepositoryFactory):
         self.routing_table = ROUTING_TABLE
-        self.repo_factory = LLMRepositoryFactory()
+        self.repo_factory = llm_repo_factory
 
     async def invoke_model(self, model_name: str, message: list[Message]) -> object:
         repository_name: str = self.routing_table.get(model_name).get("provider")

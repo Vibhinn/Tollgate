@@ -1,10 +1,10 @@
 import secrets
 import json
 
-from ..factory import RepositoryManagementFactory
+from ..factory import ApplicationRepositoryFactory
 
 class GenerateAccessTokenAdapter:
-    def __init__(self, repo_manager: RepositoryManagementFactory):
+    def __init__(self, repo_manager: ApplicationRepositoryFactory):
         self.repo_manager = repo_manager
         self.kv_cache_repo = self.repo_manager.get_repo("EXACT_CACHE")
 

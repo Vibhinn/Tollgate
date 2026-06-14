@@ -1,4 +1,3 @@
-from .repository_factory import RepositoryManagementFactory
-from .adapter_factory import AdapterManagementFactory
+from .repository_factory import ApplicationRepositoryFactory
 
-__all__ = ["RepositoryManagementFactory", "AdapterManagementFactory"]
+__all__ = ["ApplicationRepositoryFactory"]

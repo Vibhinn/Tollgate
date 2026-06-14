@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 
-from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
+from src.llm import LLMRepositoryFactory
+from src.router import RouterRepository
+from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
@@ -28,15 +30,20 @@ class Builder:
         self.__setup_job_manager()
 
     def __register_dependencies(self):
-        container.register(RepositoryManagementFactory, lambda: RepositoryManagementFactory())
-        container.register(AdapterManagementFactory,
-                           lambda: AdapterManagementFactory(container.resolve(RepositoryManagementFactory)))
-        container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory), container.resolve(RedisStreamRepository)))
-        container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(container.resolve(RepositoryManagementFactory)))
+        container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
+        container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory())
+        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory)))
+
+        container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(ApplicationRepositoryFactory),
+                                                            container.resolve(RedisStreamRepository),
+                                                            container.resolve(RouterRepository)))
+
+        container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
+                                                            container.resolve(ApplicationRepositoryFactory)))
         container.register(Config, lambda : Config())
 
     def __setup_job_manager(self):
-        repo_factory = container.resolve(RepositoryManagementFactory)
+        repo_factory = container.resolve(ApplicationRepositoryFactory)
         add_to_cache = AddToCache(
             exact_cache=repo_factory.get_repo("EXACT_CACHE"),
             embedding_repo=repo_factory.get_repo("EMBEDDING"),
