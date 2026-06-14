@@ -41,6 +41,6 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
         content={
             "role": "assistant",
             "message": model_response
-    }
+        }
     )
 

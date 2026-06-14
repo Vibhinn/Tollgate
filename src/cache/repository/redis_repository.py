@@ -7,9 +7,11 @@ class RedisRepository(CacheRepositoryInterface):
     def __init__(self):
         self.cache_conn = CacheConnection.get_connection("EXACT")
 
+    @override
     async def check_token_validity(self, token: str) -> bool:
         return True if self.cache_conn.get(f"token:{token}") else False
 
+    @override
     async def get_user_id(self, token: str) -> str:
         return await self.cache_conn.get(f"token:{token}")
 
