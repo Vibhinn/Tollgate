@@ -29,7 +29,8 @@ class Builder:
         self.__register_dependencies()
         self.__setup_job_manager()
 
-    def __register_dependencies(self):
+    @staticmethod
+    def __register_dependencies():
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory())
         container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory)))
@@ -42,7 +43,8 @@ class Builder:
                                                             container.resolve(ApplicationRepositoryFactory)))
         container.register(Config, lambda : Config())
 
-    def __setup_job_manager(self):
+    @staticmethod
+    def __setup_job_manager():
         repo_factory = container.resolve(ApplicationRepositoryFactory)
         add_to_cache = AddToCache(
             exact_cache=repo_factory.get_repo("EXACT_CACHE"),
