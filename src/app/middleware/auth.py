@@ -10,7 +10,7 @@ class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
         self.redis_repo: CacheRepositoryInterface = RedisRepository()
-        self.exempt_paths = {"/docs", "/openapi.json"}
+        self.exempt_paths = {"/docs", "/openapi.json", "/api/v1/chat/generate"}
 
         @self.app.middleware("http")
         async def check_api_token(request: Request, call_next):

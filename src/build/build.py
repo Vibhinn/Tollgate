@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
-from src.app.adapters import ChatAdapter
+from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 
 from src.app.injector import container
 
@@ -32,6 +32,7 @@ class Builder:
         container.register(AdapterManagementFactory,
                            lambda: AdapterManagementFactory(container.resolve(RepositoryManagementFactory)))
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory)))
+        container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(container.resolve(RepositoryManagementFactory)))
         container.register(Config, lambda : Config())
 
     def __setup_job_manager(self):

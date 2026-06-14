@@ -8,7 +8,7 @@ class GenerateAccessTokenAdapter:
         self.repo_manager = repo_manager
         self.kv_cache_repo = self.repo_manager.get_repo("EXACT_CACHE")
 
-    async def generate_and_save_token(self, requirement: str, user_role: str, ttl: int):
+    async def generate_and_save_token(self, requirement: str, user_role: str, ttl: int) -> str:
         token: str = f"tg_{secrets.token_urlsafe(32)}"
 
         value = json.dumps({
@@ -17,3 +17,4 @@ class GenerateAccessTokenAdapter:
         })
 
         await self.kv_cache_repo.save(key=f"token:{token}", value=value, timeout=ttl)
+        return token
