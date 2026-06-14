@@ -3,7 +3,7 @@ import json
 import threading
 from src.cache import CacheConnection
 from ..helpers.base import BaseHelper
-from src.utils.types import REDIS_STREAM_NAMES, CacheJobData
+from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
 
 from src.app.ports import JobQueueRepositoryInterface
 
@@ -48,4 +48,5 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
         ...
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
-        await self.redis_client.xadd(stream_name, {"payload": json.dumps(data)})
+        payload: StreamPayload = {"payload": json.dumps(data)}
+        await self.redis_client.xadd(stream_name, payload) #type: ignore

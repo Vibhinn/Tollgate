@@ -12,3 +12,5 @@ class CacheJobData(TypedDict):
     model_response: Message
     timeout: int
 
+class StreamPayload(TypedDict):
+    payload: str

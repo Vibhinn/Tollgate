@@ -28,9 +28,10 @@ class ChatAdapter:
     async def query_llm(self, model_name: str, message: list[Message]) -> object:
         if model_name in {"fast", "cheap", "smart"}:
             model = await self.router_repo.get_best_model(model_name)
-            return await self.router_repo.invoke_model(model_name=model, message=message)
+            return await self.router_repo.invoke_model(model_name="claude-opus-4-6", message=message)
         return await self.router_repo.invoke_model(model_name=model_name, message=message)
 
     async def add_job_to_queue(self, collection_name: str, data: dict):
         validated_data = CacheJobData(**data)
+        print("Validated data - ", validated_data)
         await self.job_queue_manager.create_job(collection_name, validated_data)
