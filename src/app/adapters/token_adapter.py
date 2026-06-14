@@ -16,4 +16,4 @@ class GenerateAccessTokenAdapter:
             "user_role": user_role
         })
 
-        await self.kv_cache_repo.save(key=token, value=value, timeout=ttl)
+        await self.kv_cache_repo.save(key=f"token:{token}", value=value, timeout=ttl)
