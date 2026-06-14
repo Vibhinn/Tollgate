@@ -1,6 +1,6 @@
 from typing import overload, Literal
 
-from src.app.adapters import ChatAdapter
+from ..adapters import ChatAdapter
 from .repository_factory import RepositoryManagementFactory
 
 from src.utils import singleton

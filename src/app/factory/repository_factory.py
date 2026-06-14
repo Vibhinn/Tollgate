@@ -1,7 +1,7 @@
 from typing import Literal, overload
 
 from src.jobs import RedisStreamRepository
-from src.app.ports import (VectorEmbeddingRepositoryInterface,
+from ..ports import (VectorEmbeddingRepositoryInterface,
                            VectorDBRepositoryInterface,
                            JobQueueRepositoryInterface,
                            CacheRepositoryInterface)

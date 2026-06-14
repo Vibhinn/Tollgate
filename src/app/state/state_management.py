@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from src.app.ports import JobQueueRepositoryInterface
-from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
+from ..ports import JobQueueRepositoryInterface
+from ..factory import RepositoryManagementFactory, AdapterManagementFactory
 
 @dataclass
 class ApplicationState:
