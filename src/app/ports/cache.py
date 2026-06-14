@@ -7,7 +7,7 @@ class CacheRepositoryInterface(ABC):
         ...
 
     @abstractmethod
-    async def get_user_id(self, token: str) -> bool:
+    async def get_user_id(self, token: str) -> str:
         ...
 
     @abstractmethod

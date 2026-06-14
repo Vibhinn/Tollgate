@@ -31,7 +31,7 @@ class Builder:
         container.register(RepositoryManagementFactory, lambda: RepositoryManagementFactory())
         container.register(AdapterManagementFactory,
                            lambda: AdapterManagementFactory(container.resolve(RepositoryManagementFactory)))
-        container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory)))
+        container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(RepositoryManagementFactory), container.resolve(RedisStreamRepository)))
         container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(container.resolve(RepositoryManagementFactory)))
         container.register(Config, lambda : Config())
 

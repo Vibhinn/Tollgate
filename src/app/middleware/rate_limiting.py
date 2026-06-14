@@ -18,8 +18,15 @@ class RateLimitingMiddleware(BaseMiddleware):
         @self.app.middleware("http")
         async def rate_limit(request: Request, call_next):
             auth_header: str | None = request.headers.get("Authorization")
-            token: str = "mock" or auth_header.removeprefix("Bearer ")
-            user_id: str = "mockuser" or await self.redis_repo.get_user_id(token)
+
+            if not auth_header:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail":"No auth token in Header."}
+                )
+
+            token: str = auth_header.removeprefix("Bearer ")
+            user_id: str = await self.redis_repo.get_user_id(token)
 
             bucket = self.rate_limiter.get_user_bucket(user_id)
 

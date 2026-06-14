@@ -5,7 +5,7 @@ from src.app.endpoints import chat_api_router, image_api_router, transcription_a
 class MiddlewareInstallation:
     @staticmethod
     def install_middleware(app: FastAPI):
-        middlewares = [AuthenticationMiddleware, RateLimitingMiddleware]
+        middlewares = [RateLimitingMiddleware, AuthenticationMiddleware]
         for middleware in middlewares:
             print("Installing middleware - ", middleware.__name__)
             middleware(app)
