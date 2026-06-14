@@ -36,16 +36,19 @@ class QdrantRepository(VectorDBRepositoryInterface):
 
     @override
     async def search(self, embedding: ndarray):
+        print("Embedding shape - ", embedding.shape)
         results = self.client.query_points(
             collection_name=self.collection_name,
-            query=embedding.tolist(),
+            query=embedding[0].tolist(),
             limit=1,
             score_threshold=0.9
         )
 
-        if not results:
+        if not results.points:
             return None
 
+        print("The result is - ", results)
+
         return {
-            "response": results[0].payload["model_response"]
+            "response": results.points[0].payload["model_response"]
         }

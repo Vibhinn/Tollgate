@@ -9,7 +9,7 @@ class ChatModel(BaseModel):
     @field_validator("model")
     @classmethod
     def validate_model(cls, v):
-        if v not in ROUTING_TABLE or v not in ["fast", "cheap", "smart"]:
+        if v not in ROUTING_TABLE and v not in ["fast", "cheap", "smart"]:
             raise ValueError(f"Unknown model: {v}. Available: {list(ROUTING_TABLE.keys())}")
         return v
 

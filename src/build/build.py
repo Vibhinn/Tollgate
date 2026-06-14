@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from src.app.factory import RepositoryManagementFactory, AdapterManagementFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
-
+from src.app.migrations import BaseMigration
 from src.app.injector import container
 
 from src.jobs import JobQueueConnection
@@ -57,5 +57,6 @@ class Builder:
             model2vec_model=self.config.get_config("EMBEDDING", "MODEL_NAME")
         )
         JobQueueConnection.initialize()
+        BaseMigration.run_all()
 
 
