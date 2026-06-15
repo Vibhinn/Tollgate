@@ -54,7 +54,6 @@ class Builder:
 
         scheduler = RedisStreamRepository()
         scheduler.register_helper("RESPONSE_CACHE", add_to_cache)
-        scheduler.start()
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 
     def __create_and_initialize_connections(self):
@@ -67,5 +66,7 @@ class Builder:
         )
         JobQueueConnection.initialize()
         BaseMigration.run_all()
+
+
 
 

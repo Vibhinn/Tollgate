@@ -4,17 +4,20 @@ from starlette.responses import JSONResponse
 from .base import BaseMiddleware
 from src.cache import RedisRepository
 from ..ports import CacheRepositoryInterface
+from .exemptions import EXEMPT_PATHS
 
 
 class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
         self.redis_repo: CacheRepositoryInterface = RedisRepository()
-        self.exempt_paths = {"/docs", "/openapi.json", "/api/v1/chat/generate"}
+        self.exempt_paths = EXEMPT_PATHS
 
         @self.app.middleware("http")
         async def check_api_token(request: Request, call_next):
+            print("Request URL - ", request.url.path)
             if request.url.path in self.exempt_paths:
+                print("Calling - ", call_next)
                 return await call_next(request)
 
             auth_header: str | None = request.headers.get("Authorization")

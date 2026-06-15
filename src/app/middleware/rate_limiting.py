@@ -7,6 +7,7 @@ from .base import BaseMiddleware
 from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from ..ports import CacheRepositoryInterface
+from .exemptions import EXEMPT_PATHS
 
 
 class RateLimitingMiddleware(BaseMiddleware):
@@ -17,6 +18,9 @@ class RateLimitingMiddleware(BaseMiddleware):
 
         @self.app.middleware("http")
         async def rate_limit(request: Request, call_next):
+            if request.url.path in EXEMPT_PATHS:
+                return await call_next(request)
+
             auth_header: str | None = request.headers.get("Authorization")
 
             if not auth_header:

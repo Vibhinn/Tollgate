@@ -1,12 +1,9 @@
 import asyncio
 import json
-import threading
 from src.cache import CacheConnection
 from ..helpers.base import BaseHelper
 from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
-
 from src.app.ports import JobQueueRepositoryInterface
-
 from typing import overload
 
 class RedisStreamRepository(JobQueueRepositoryInterface):
@@ -15,17 +12,13 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
     def __init__(self):
         self.redis_client = CacheConnection.get_connection("EXACT")
         self._helper_registry: dict[str, BaseHelper] = {}
-        self._worker_thread = threading.Thread(target=self._run_worker, daemon=True)
-        self._loop = asyncio.new_event_loop()
+        self._task: asyncio.Task | None = None
 
     def register_helper(self, stream_name: REDIS_STREAM_NAMES, helper: BaseHelper):
         self._helper_registry[stream_name] = helper
 
     def start(self):
-        self._worker_thread.start()
-
-    def _run_worker(self):
-        self._loop.run_until_complete(self._listen())
+        self._task = asyncio.create_task(self._listen())
 
     async def _listen(self):
         while True:
@@ -40,13 +33,11 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
                         await helper.execute(data)
 
     @overload
-    async def create_job(self, stream_name: REDIS_STREAM_NAMES.RESPONSE_CACHE, data: CacheJobData) -> None:
-        ...
+    async def create_job(self, stream_name: REDIS_STREAM_NAMES.RESPONSE_CACHE, data: CacheJobData) -> None: ...
 
     @overload
-    async def create_job(self, stream_name: REDIS_STREAM_NAMES.VECTORIZE, data: CacheJobData) -> None:
-        ...
+    async def create_job(self, stream_name: REDIS_STREAM_NAMES.VECTORIZE, data: CacheJobData) -> None: ...
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
         payload: StreamPayload = {"payload": json.dumps(data)}
-        await self.redis_client.xadd(stream_name, payload) #type: ignore
+        await self.redis_client.xadd(stream_name, payload)  # type: ignore
