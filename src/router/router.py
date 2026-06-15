@@ -7,7 +7,7 @@ class RouterRepository:
         self.routing_table = ROUTING_TABLE
         self.llm_repo_factory = llm_repo_factory
 
-    async def invoke_model(self, model_name: str, message: list[Message]) -> object:
+    async def invoke_model(self, model_name: str, message: list[Message]) -> str | None:
         repository_name: str = self.routing_table.get(model_name).get("provider")
         repository = self.llm_repo_factory.get_repo(repository_name)
 

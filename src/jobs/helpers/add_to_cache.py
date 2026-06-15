@@ -37,6 +37,6 @@ class AddToCache(BaseHelper):
             await self.vector_cache.save(
                 embedding=embedding,
                 user_message=payload.get("user_message"),
-                model_response=payload.get("model_response").content
+                model_response=payload.get("model_response")
             )
 

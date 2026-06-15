@@ -9,7 +9,7 @@ class Message(BaseModel):
 class CacheJobData(TypedDict):
     cache_type: CACHE_TYPE
     user_message: str
-    model_response: Message
+    model_response: str
     timeout: int
 
 class StreamPayload(TypedDict):

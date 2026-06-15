@@ -25,7 +25,7 @@ class QdrantRepository(VectorDBRepositoryInterface):
             points=[
                 PointStruct(
                     id=str(uuid4()),
-                    vector=embedding.tolist(),
+                    vector=embedding[0].tolist(),
                     payload={
                         "user_message": user_message,
                         "model_response": model_response
