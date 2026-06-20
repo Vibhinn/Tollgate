@@ -2,10 +2,13 @@ from src.utils.types import Message
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
+from .adapters import RouterAdapter
+
 class RouterRepository:
-    def __init__(self, llm_repo_factory: LLMRepositoryFactory):
+    def __init__(self, llm_repo_factory: LLMRepositoryFactory, router_adapter: RouterAdapter):
         self.routing_table = ROUTING_TABLE
         self.llm_repo_factory = llm_repo_factory
+        self.router_adapter = router_adapter
 
     async def invoke_model(self, model_name: str, message: list[Message]) -> str | None:
         repository_name: str = self.routing_table.get(model_name).get("provider")
@@ -15,7 +18,8 @@ class RouterRepository:
             return None
 
         model_response = await repository.invoke(message[-1].content, model_name)
-        return model_response
+        await self.router_adapter.add_analytics_job_to_queue(model_response)
+        return model_response.content[0].text
 
     async def get_best_model(self, requirement: str) -> str:
         pass

@@ -1,0 +1,1 @@
+from .pricing import PRICING_TABLE

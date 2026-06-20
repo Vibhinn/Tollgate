@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from src.llm import LLMRepositoryFactory
 from src.router import RouterRepository
+from src.router.adapters import RouterAdapter
 from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration
@@ -33,7 +34,7 @@ class Builder:
     def __register_dependencies():
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory())
-        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory)))
+        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory)), container.resolve(RouterAdapter))
 
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(ApplicationRepositoryFactory),
                                                             container.resolve(RedisStreamRepository),
@@ -41,6 +42,7 @@ class Builder:
 
         container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
                                                             container.resolve(ApplicationRepositoryFactory)))
+        container.register(RouterAdapter, lambda: RouterAdapter(container.resolve(RedisStreamRepository)))
         container.register(Config, lambda : Config())
 
     @staticmethod
