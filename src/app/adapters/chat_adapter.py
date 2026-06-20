@@ -3,7 +3,8 @@ from ..validators import Message
 from ..factory import ApplicationRepositoryFactory
 
 from src.router import RouterRepository
-from src.utils.types import CacheJobData
+
+from src.utils.types import REDIS_STREAM_NAMES
 
 class ChatAdapter:
     def __init__(self, repo_manager: ApplicationRepositoryFactory,
@@ -25,13 +26,11 @@ class ChatAdapter:
             db_result = await self.vector_db_repo.search(embedding)
             return db_result
 
-    async def query_llm(self, model_name: str, message: list[Message]) -> object:
+    async def query_llm(self, model_name: str, message: list[Message]) -> str:
         if model_name in {"fast", "cheap", "smart"}:
             model = await self.router_repo.get_best_model(model_name)
             return await self.router_repo.invoke_model(model_name="claude-opus-4-6", message=message)
         return await self.router_repo.invoke_model(model_name=model_name, message=message)
 
-    async def add_job_to_queue(self, collection_name: str, data: dict):
-        validated_data = CacheJobData(**data)
-        print("Validated data - ", validated_data)
-        await self.job_queue_manager.create_job(collection_name, validated_data)
+    async def add_job_to_queue(self, collection_name: REDIS_STREAM_NAMES, data: dict):
+        await self.job_queue_manager.create_job(collection_name, data)

@@ -56,6 +56,7 @@ class Builder:
 
         scheduler = RedisStreamRepository()
         scheduler.register_helper("RESPONSE_CACHE", add_to_cache)
+        scheduler.register_helper("ANALYTICS", None)
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 
     def __create_and_initialize_connections(self):

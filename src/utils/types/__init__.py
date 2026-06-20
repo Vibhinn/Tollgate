@@ -1,4 +1,4 @@
 from .params import REDIS_STREAM_NAMES, REPOSITORY_TYPE, ADAPTER_TYPE, CONFIGURATION_SECTIONS, CONFIGURATION_OPTIONS, CACHE_TYPE, LLM_PROVIDER, QUEUE_TYPE
-from .dtypes import CacheJobData, Message, StreamPayload
+from .dtypes import CacheJobData, Message, StreamPayload, AnalyticsJobData
 
-__all__ = ["REDIS_STREAM_NAMES", "REPOSITORY_TYPE", "ADAPTER_TYPE", "CONFIGURATION_SECTIONS", "CONFIGURATION_OPTIONS", "CACHE_TYPE", "LLM_PROVIDER", "QUEUE_TYPE", "CacheJobData", "Message", "StreamPayload"]
+__all__ = ["REDIS_STREAM_NAMES", "REPOSITORY_TYPE", "ADAPTER_TYPE", "CONFIGURATION_SECTIONS", "CONFIGURATION_OPTIONS", "CACHE_TYPE", "LLM_PROVIDER", "QUEUE_TYPE", "CacheJobData", "Message", "StreamPayload", "AnalyticsJobData"]
