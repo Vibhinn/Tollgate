@@ -1,5 +1,3 @@
-from watchfiles import awatch
-
 from src.app.ports import RankingRepositoryInterface
 
 from ..connection import CacheConnection
