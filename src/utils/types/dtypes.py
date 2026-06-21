@@ -15,9 +15,10 @@ class CacheJobData(TypedDict):
 class StreamPayload(TypedDict):
     payload: str
 
+
 class AnalyticsJobData(TypedDict):
-  model_name: str
-  input_tokens: int
-  output_tokens: int
-  latency_ms: float
-  timestamp: str
+    model_name: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: float
+    timestamp: str

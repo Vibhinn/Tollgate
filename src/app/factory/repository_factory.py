@@ -2,8 +2,9 @@ from typing import Literal, overload
 
 from ..ports import (VectorEmbeddingRepositoryInterface,
                            VectorDBRepositoryInterface,
-                           CacheRepositoryInterface)
-from src.cache import RedisRepository, QdrantRepository
+                           CacheRepositoryInterface,
+                            RankingRepositoryInterface)
+from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository
 from src.llm import Model2VecRepository
 
 from src.utils.types import REPOSITORY_TYPE
@@ -15,11 +16,13 @@ class ApplicationRepositoryFactory:
         self.__embedding_repo = Model2VecRepository()
         self.__redis_repo = RedisRepository()
         self.__vector_db_repo = QdrantRepository()
+        self.__ranking_repo = RedisRankingRepository()
 
         self.__repo_map = {
             "EMBEDDING": self.__embedding_repo,
             "VECTOR_CACHE": self.__vector_db_repo,
             "EXACT_CACHE": self.__redis_repo,
+            "RANKING": self.__ranking_repo
         }
 
     @overload
@@ -28,6 +31,8 @@ class ApplicationRepositoryFactory:
     def get_repo(self, repo_type: Literal["VECTOR_CACHE"]) -> VectorDBRepositoryInterface: ...
     @overload
     def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> CacheRepositoryInterface: ...
+    @overload
+    def get_repo(self, repo_type: Literal["RANKING"]) -> RankingRepositoryInterface: ...
 
     def get_repo(self, repo_type: REPOSITORY_TYPE) -> object:
         return self.__repo_map[repo_type]

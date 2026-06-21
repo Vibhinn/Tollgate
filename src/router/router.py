@@ -36,4 +36,4 @@ class RouterRepository:
         return model_response.content[0].text
 
     async def get_best_model(self, requirement: str) -> str:
-        pass
+        return await self.router_adapter.get_best_model(requirement)

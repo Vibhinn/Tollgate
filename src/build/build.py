@@ -10,7 +10,7 @@ from src.app.injector import container
 
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository
-from src.jobs.helpers import AddToCache
+from src.jobs.helpers import AddToCache, AnalyticsJobHelper
 
 from src.utils.config import Config
 from src.cache import CacheConnection
@@ -34,7 +34,7 @@ class Builder:
     def __register_dependencies():
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory())
-        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory)), container.resolve(RouterAdapter))
+        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory), container.resolve(RouterAdapter)))
 
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(ApplicationRepositoryFactory),
                                                             container.resolve(RedisStreamRepository),
@@ -42,8 +42,11 @@ class Builder:
 
         container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
                                                             container.resolve(ApplicationRepositoryFactory)))
-        container.register(RouterAdapter, lambda: RouterAdapter(container.resolve(RedisStreamRepository)))
         container.register(Config, lambda : Config())
+        container.register(RouterAdapter, lambda: RouterAdapter(
+            container.resolve(RedisStreamRepository),
+            container.resolve(ApplicationRepositoryFactory).get_repo("RANKING")
+        ))
 
     @staticmethod
     def __setup_job_manager():
@@ -58,6 +61,11 @@ class Builder:
         scheduler.register_helper("RESPONSE_CACHE", add_to_cache)
         scheduler.register_helper("ANALYTICS", None)
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
+
+        analytics_helper = AnalyticsJobHelper(
+            ranking_repo=repo_factory.get_repo("RANKING")
+        )
+        scheduler.register_helper("ANALYTICS", analytics_helper)
 
     def __create_and_initialize_connections(self):
         CacheConnection.initialize()
