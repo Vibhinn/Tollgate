@@ -40,4 +40,4 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
         payload: StreamPayload = {"payload": json.dumps(data)}
-        await self.redis_client.xadd(stream_name, payload)  # type: ignore
+        await self.redis_client.xadd(stream_name, payload, maxlen=1000)  # type: ignore
