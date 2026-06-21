@@ -6,7 +6,7 @@ class RouterAdapter:
         self.ranking_repo = ranking_repo
         self.magic_command_map: dict = {
             "cheap": "model:ranking:cost",
-            "smart": "model:ranking:latency"
+            "fast": "model:ranking:latency"
         }
 
     async def add_job_to_queue(self, data: dict) -> None:

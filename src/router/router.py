@@ -5,7 +5,7 @@ from src.utils.types import Message, AnalyticsJobData
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
-from .adapters import RouterAdapter
+from src.app.adapters import RouterAdapter
 
 class RouterRepository:
     def __init__(self, llm_repo_factory: LLMRepositoryFactory, router_adapter: RouterAdapter):
