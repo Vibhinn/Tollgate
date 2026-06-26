@@ -174,26 +174,27 @@ DONE ─────────────────────────
   ▼                                                                      ▼               ▼
 ```
 
-| # | Feature | Status |
-|---|---|---|
-| 1 | Multi-provider routing (OpenAI, Anthropic, Gemini) | ✅ Done |
-| 2 | Bearer token auth + BYOK token generation | ✅ Done |
-| 3 | Token bucket rate limiting with `Retry-After` | ✅ Done |
-| 4 | Exact cache (Redis) with configurable TTL | ✅ Done |
-| 5 | Semantic cache (Qdrant + model2vec embeddings) | ✅ Done |
-| 6 | Redis Streams async job queue for cache + analytics | ✅ Done |
-| 7 | Live EMA-based cost and latency ranking per model | ✅ Done |
-| 8 | `"cheap"` / `"fast"` / `"smart"` policy routing | ✅ Done |
-| 9 | Ports & adapters architecture with custom DI container | ✅ Done |
-| 10 | Analytics dashboard endpoint (data collected, API stub) | 🔧 In Progress |
-| 11 | Gemini provider fully wired (config exists, adapter pending) | 🔧 In Progress |
-| 12 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |
-| 13 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
-| 14 | Streaming responses (SSE / chunked transfer) | 📋 Planned |
-| 15 | Per-token budget enforcement and cost caps | 📋 Planned |
-| 16 | Fallback chains (primary → fallback on error/timeout) | 📋 Planned |
-| 17 | Multi-tenant routing with isolated rate limits | 📋 Planned |
-| 18 | OpenAI-compatible `/v1/chat/completions` drop-in API | 📋 Planned |
+| #  | Feature | Status |
+|----|---|---|
+| 1  | Multi-provider routing (OpenAI, Anthropic, Gemini) | ✅ Done |
+| 2  | Bearer token auth + BYOK token generation | ✅ Done |
+| 3  | Token bucket rate limiting with `Retry-After` | ✅ Done |
+| 4  | Exact cache (Redis) with configurable TTL | ✅ Done |
+| 5  | Semantic cache (Qdrant + model2vec embeddings) | ✅ Done |
+| 6  | Redis Streams async job queue for cache + analytics | ✅ Done |
+| 7  | Live EMA-based cost and latency ranking per model | ✅ Done |
+| 8  | `"cheap"` / `"fast"` / `"smart"` policy routing | ✅ Done |
+| 9  | Ports & adapters architecture with custom DI container | ✅ Done |
+| 10 | Add a dedicated CLI to setup the proxy on end user | 🔧 In Progress |
+| 11 | Analytics dashboard endpoint (data collected, API stub) | 🔧 In Progress |
+| 12 | Gemini provider fully wired (config exists, adapter pending) | 🔧 In Progress |
+| 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |
+| 14 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
+| 15 | Streaming responses (SSE / chunked transfer) | 📋 Planned |
+| 16 | Per-token budget enforcement and cost caps | 📋 Planned |
+| 17 | Fallback chains (primary → fallback on error/timeout) | 📋 Planned |
+| 18 | Multi-tenant routing with isolated rate limits | 📋 Planned |
+| 19 | OpenAI-compatible `/v1/chat/completions` drop-in API | 📋 Planned |
 
 ---
 
