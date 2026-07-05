@@ -10,14 +10,16 @@ from src.app.adapters import RouterAdapter
 
 if TYPE_CHECKING:
     from src.utils.types import Message
+    from src.utils.config import Config
 
 class RouterRepository:
-    def __init__(self, llm_repo_factory: LLMRepositoryFactory, router_adapter: RouterAdapter):
+    def __init__(self, llm_repo_factory: LLMRepositoryFactory, router_adapter: RouterAdapter, config: Config):
         self.routing_table = ROUTING_TABLE
         self.llm_repo_factory = llm_repo_factory
         self.router_adapter = router_adapter
+        self.config = config
 
-    async def invoke_model(self, model_name: str, message: list[Message]) -> str:
+    async def invoke_model(self, model_name: str, messages: list[Message]) -> str:
         repository_name: str = self.routing_table.get(model_name).get("provider")
         repository = self.llm_repo_factory.get_repo(repository_name)
 
@@ -25,7 +27,7 @@ class RouterRepository:
             return ""
 
         start: float = time.monotonic()
-        model_response = await repository.invoke(message[-1].content, model_name)
+        model_response = await repository.invoke(messages[-1].content, model_name)
         latency_ms: float = (time.monotonic() - start)*1000
 
         analytics_object = AnalyticsJobData(
@@ -36,8 +38,13 @@ class RouterRepository:
             timestamp=datetime.utcnow().isoformat()
         )
 
-        await self.router_adapter.add_job_to_queue(analytics_object)
+        await self.router_adapter.add_job_to_queue(collection_name="ANALYTICS", data=analytics_object) #type: ignore
         return model_response.content[0].text
 
-    async def get_best_model(self, requirement: str) -> str:
-        return await self.router_adapter.get_best_model(requirement)
+    async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:
+        if requirement in {"fast", "cheap"}:
+            return await self.router_adapter.get_best_model(requirement)
+        elif requirement in {"smart"}:
+            return await self.router_adapter.identify_model_intelligently(user_message.content) #type: ignore
+        else:
+            return self.config.get_config("GATEWAY", "DEFAULT_MODEL")
