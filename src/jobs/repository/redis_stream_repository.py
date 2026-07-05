@@ -1,10 +1,13 @@
 import asyncio
 import json
 from src.cache import CacheConnection
-from ..helpers.base import BaseHelper
-from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
 from src.app.ports import JobQueueRepositoryInterface
-from typing import overload
+from typing import overload, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..helpers.base import BaseHelper
+    from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
+
 
 class RedisStreamRepository(JobQueueRepositoryInterface):
     """Creates redis stream jobs and runs a background worker to process them"""

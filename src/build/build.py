@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from src.llm import LLMRepositoryFactory
 from src.router import RouterRepository
-from src.router.adapters import RouterAdapter
+from src.app.adapters import RouterAdapter
 from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration

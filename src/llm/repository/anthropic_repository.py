@@ -1,6 +1,10 @@
+from typing import TYPE_CHECKING
+
 from src.app.ports import LLMRepositoryInterface
 from ..connection import LLMConnection
-from anthropic.types import Message
+
+if TYPE_CHECKING:
+    from anthropic.types import Message
 
 class AnthropicRepository(LLMRepositoryInterface):
     def __init__(self):

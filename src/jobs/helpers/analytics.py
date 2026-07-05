@@ -1,11 +1,13 @@
 import json
 
-from typing import override
+from typing import override, TYPE_CHECKING
 
 from src.app.ports import RankingRepositoryInterface
-from src.utils.types import AnalyticsJobData, StreamPayload
 from src.router.core.pricing import PRICING_TABLE
 from .base import BaseHelper
+
+if TYPE_CHECKING:
+    from src.utils.types import AnalyticsJobData, StreamPayload
 
 ALPHA = 0.1
 

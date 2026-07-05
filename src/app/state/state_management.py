@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from ..ports import JobQueueRepositoryInterface
-from ..factory import ApplicationRepositoryFactory
+if TYPE_CHECKING:
+    from ..ports import JobQueueRepositoryInterface
+    from ..factory import ApplicationRepositoryFactory
 
 @dataclass
 class ApplicationState:

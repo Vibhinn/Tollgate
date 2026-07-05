@@ -2,9 +2,10 @@ from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
 from model2vec import StaticModel
-from typing import overload, Literal
+from typing import overload, Literal, TYPE_CHECKING
 
-from src.utils.types import LLM_PROVIDER
+if TYPE_CHECKING:
+    from src.utils.types import LLM_PROVIDER
 
 class LLMConnection:
     _openai_conn: AsyncOpenAI = None

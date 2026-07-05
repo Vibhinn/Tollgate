@@ -1,8 +1,11 @@
 import json
-from typing import override
-from src.utils.types import CacheJobData, StreamPayload
-from src.app.ports import CacheRepositoryInterface, VectorEmbeddingRepositoryInterface, VectorDBRepositoryInterface
+from typing import override, TYPE_CHECKING
+from src.utils.types import CacheJobData
 from .base import BaseHelper
+
+if TYPE_CHECKING:
+    from src.utils.types import StreamPayload
+    from src.app.ports import CacheRepositoryInterface, VectorEmbeddingRepositoryInterface, VectorDBRepositoryInterface
 
 
 class AddToCache(BaseHelper):

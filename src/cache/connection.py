@@ -1,7 +1,9 @@
 import redis.asyncio as redis
 from qdrant_client import QdrantClient
-from typing import overload, Literal
-from src.utils.types import CACHE_TYPE
+from typing import overload, Literal, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.utils.types import CACHE_TYPE
 
 class CacheConnection:
     _redis_conn: redis.Redis = None

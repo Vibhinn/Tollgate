@@ -1,4 +1,7 @@
-from src.app.ports import JobQueueRepositoryInterface, RankingRepositoryInterface
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.app.ports import JobQueueRepositoryInterface, RankingRepositoryInterface
 
 class RouterAdapter:
     def __init__(self, job_queue_manager: JobQueueRepositoryInterface, ranking_repo: RankingRepositoryInterface):

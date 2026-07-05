@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from src.utils.types import StreamPayload
-
+if TYPE_CHECKING:
+    from src.utils.types import StreamPayload
 
 class BaseHelper(ABC):
     @abstractmethod

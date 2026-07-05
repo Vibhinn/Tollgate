@@ -1,9 +1,11 @@
 import redis
 
-from typing import overload, Literal
+from typing import overload, Literal, TYPE_CHECKING
 
 from src.cache import CacheConnection
-from src.utils.types import QUEUE_TYPE
+
+if TYPE_CHECKING:
+    from src.utils.types import QUEUE_TYPE
 
 class JobQueueConnection:
     _redis_stream_conn: redis.Redis = None

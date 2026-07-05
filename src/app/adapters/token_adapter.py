@@ -1,7 +1,9 @@
 import secrets
 import json
+from typing import TYPE_CHECKING
 
-from ..factory import ApplicationRepositoryFactory
+if TYPE_CHECKING:
+    from ..factory import ApplicationRepositoryFactory
 
 class GenerateAccessTokenAdapter:
     def __init__(self, repo_manager: ApplicationRepositoryFactory):

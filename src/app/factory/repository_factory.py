@@ -1,13 +1,15 @@
-from typing import Literal, overload
+from typing import Literal, overload, TYPE_CHECKING
 
-from ..ports import (VectorEmbeddingRepositoryInterface,
+if TYPE_CHECKING:
+    from ..ports import (VectorEmbeddingRepositoryInterface,
                            VectorDBRepositoryInterface,
                            CacheRepositoryInterface,
                             RankingRepositoryInterface)
+    from src.utils.types import REPOSITORY_TYPE
+
+
 from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository
 from src.llm import Model2VecRepository
-
-from src.utils.types import REPOSITORY_TYPE
 from src.utils import singleton
 
 @singleton

@@ -1,6 +1,8 @@
 from configparser import ConfigParser
+from typing import TYPE_CHECKING
 
-from ..types import CONFIGURATION_OPTIONS, CONFIGURATION_SECTIONS
+if TYPE_CHECKING:
+    from ..types import CONFIGURATION_OPTIONS, CONFIGURATION_SECTIONS
 
 class Config:
     def __init__(self):

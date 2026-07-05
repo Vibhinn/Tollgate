@@ -1,11 +1,15 @@
 import time
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from src.utils.types import Message, AnalyticsJobData
+from src.utils.types import AnalyticsJobData
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
 from src.app.adapters import RouterAdapter
+
+if TYPE_CHECKING:
+    from src.utils.types import Message
 
 class RouterRepository:
     def __init__(self, llm_repo_factory: LLMRepositoryFactory, router_adapter: RouterAdapter):

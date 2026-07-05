@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from numpy import ndarray
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 class VectorDBRepositoryInterface(ABC):
     @abstractmethod

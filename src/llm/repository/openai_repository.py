@@ -1,8 +1,10 @@
-from typing import override
+from typing import override, TYPE_CHECKING
 
 from src.app.ports import LLMRepositoryInterface
 from ..connection import LLMConnection
-from src.app.validators import Message
+
+if TYPE_CHECKING:
+    from src.app.validators import Message
 
 class OpenAIRepository(LLMRepositoryInterface):
     def __init__(self):

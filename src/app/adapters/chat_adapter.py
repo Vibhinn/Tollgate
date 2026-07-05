@@ -1,10 +1,11 @@
-from ..ports import JobQueueRepositoryInterface
-from ..validators import Message
-from ..factory import ApplicationRepositoryFactory
+from typing import TYPE_CHECKING
 
-from src.router import RouterRepository
-
-from src.utils.types import REDIS_STREAM_NAMES
+if TYPE_CHECKING:
+    from src.router import RouterRepository
+    from ..factory import ApplicationRepositoryFactory
+    from ..ports import JobQueueRepositoryInterface
+    from ..validators import Message
+    from src.utils.types import REDIS_STREAM_NAMES
 
 class ChatAdapter:
     def __init__(self, repo_manager: ApplicationRepositoryFactory,
@@ -29,7 +30,7 @@ class ChatAdapter:
     async def query_llm(self, model_name: str, message: list[Message]) -> str:
         if model_name in {"fast", "cheap", "smart"}:
             model = await self.router_repo.get_best_model(model_name)
-            return await self.router_repo.invoke_model(model_name="claude-opus-4-6", message=message)
+            return await self.router_repo.invoke_model(model_name=model, message=message)
         return await self.router_repo.invoke_model(model_name=model_name, message=message)
 
     async def add_job_to_queue(self, collection_name: REDIS_STREAM_NAMES, data: dict):

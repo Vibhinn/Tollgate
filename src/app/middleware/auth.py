@@ -1,11 +1,13 @@
+from typing import TYPE_CHECKING
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware
 from src.cache import RedisRepository
-from ..ports import CacheRepositoryInterface
 from .exemptions import EXEMPT_PATHS
 
+if TYPE_CHECKING:
+    from ..ports import CacheRepositoryInterface
 
 class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):

@@ -1,9 +1,10 @@
-from typing import override
+from typing import override, TYPE_CHECKING
 
 from src.app.ports import VectorEmbeddingRepositoryInterface
 from ..connection import LLMConnection
 
-from numpy import ndarray
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 class Model2VecRepository(VectorEmbeddingRepositoryInterface):
     def __init__(self):
