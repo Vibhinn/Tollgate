@@ -10,5 +10,5 @@ class VectorDBRepositoryInterface(ABC):
         ...
 
     @abstractmethod
-    async def search(self, embedding: ndarray):
+    async def search(self, embedding: ndarray, score_threshold: float = 0.9):
         ...

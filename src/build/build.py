@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from src.llm import LLMRepositoryFactory
 from src.router import RouterRepository
 from src.app.adapters import RouterAdapter
+from src.app.intelligence import RoutingIntelligenceLayer
 from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration
@@ -43,9 +44,11 @@ class Builder:
         container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
                                                             container.resolve(ApplicationRepositoryFactory)))
         container.register(Config, lambda : Config())
+        container.register(RoutingIntelligenceLayer, lambda: RoutingIntelligenceLayer(container.resolve(ApplicationRepositoryFactory)))
         container.register(RouterAdapter, lambda: RouterAdapter(
             container.resolve(RedisStreamRepository),
-            container.resolve(ApplicationRepositoryFactory).get_repo("RANKING")
+            container.resolve(ApplicationRepositoryFactory).get_repo("RANKING"),
+            container.resolve(RoutingIntelligenceLayer),
         ))
 
     @staticmethod

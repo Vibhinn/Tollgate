@@ -35,13 +35,13 @@ class QdrantRepository(VectorDBRepositoryInterface):
         )
 
     @override
-    async def search(self, embedding: ndarray):
+    async def search(self, embedding: ndarray, score_threshold: float = 0.9):
         print("Embedding shape - ", embedding.shape)
         results = self.client.query_points(
             collection_name=self.collection_name,
             query=embedding[0].tolist(),
             limit=1,
-            score_threshold=0.9
+            score_threshold=score_threshold
         )
 
         if not results.points:
