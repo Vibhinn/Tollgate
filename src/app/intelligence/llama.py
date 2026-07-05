@@ -1,19 +1,23 @@
 import asyncio
 from functools import partial
 from pathlib import Path
+
 from llama_cpp import Llama, LlamaGrammar
+
 
 class RoutingIntelligenceLayer:
     def __init__(self):
-        model_path = Path(__file__).parent / "models" / "qwen0.5B.gguf"
+        model_path = Path(__file__).parent / "model" / "qwen2.5-0.5b-instruct-q4_k_m.gguf"
         self.local_llm = Llama(
             model_path=str(model_path),
             n_ctx=512,
             n_threads=2,
-            verbose=False
+            verbose=False,
+            chat_format="chatml",
         )
-
-        self.grammar = LlamaGrammar.from_string(r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"')
+        self.grammar = LlamaGrammar.from_string(
+            r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
+        )
 
     async def classify(self, user_message: str) -> str:
         loop = asyncio.get_event_loop()
@@ -22,14 +26,14 @@ class RoutingIntelligenceLayer:
             partial(
                 self.local_llm.create_chat_completion,
                 messages=[
-                    {"role": "system",
-                     "content": "Classify the user request. Reply with only one word: SIMPLE, CODE, REASONING, or CREATIVE."},
-                    {"role": "user", "content": user_message}
+                    {
+                        "role": "system",
+                        "content": "Classify the user request. Reply with only one word: SIMPLE, CODE, REASONING, or CREATIVE.",
+                    },
+                    {"role": "user", "content": user_message},
                 ],
                 grammar=self.grammar,
-                max_tokens=1
-            )
+                max_tokens=1,
+            ),
         )
-        return result
-
-
+        return result["choices"][0]["message"]["content"].strip()

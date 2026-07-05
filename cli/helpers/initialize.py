@@ -1,33 +1,32 @@
-import secrets
+import sys
 from pathlib import Path
-from ..inputs import DATABASE
 
-def generate_config_ini_file():
-    config_file_path = Path('config.ini')
+from cryptography.fernet import Fernet
 
-    if not config_file_path.exists():
-        config_file_path.touch()
+from ..ui import console
+from ..steps import guardrail, download_model, services, admin_setup, providers, rate_limiting, finalize
 
-def set_encryption_key():
-    print("Before we begin, please set your encryption key in order to encrypt your API credentials")
-    encryption_key: str = input("Enter your key (press ENTER if you don't have any)")
-
-    if not encryption_key:
-        encryption_key = secrets.token_hex(32)
+_ABORT_MSG = "\n\n  [bold yellow]Setup cancelled — no files were written.[/bold yellow]\n"
 
 
+def run_setup() -> None:
+    from ..ui.console import print_banner
+    print_banner()
 
-def ask_database_type():
-    print("Please input the database type for your application")
-    print("============")
-    print("Supported databases - SQLite, PostgreSQL, MySQL (default SQLite)")
+    config: dict = {}
+    try:
+        config = guardrail.run(config)
+        config["_fernet_key"] = Fernet.generate_key()
 
-    database_input = input()
-    normalized_input = database_input.upper()
+        config = download_model.run(config)
+        config = services.run(config)
+        config = admin_setup.run(config)
+        config = providers.run(config)
+        config = rate_limiting.run(config)
+        config = finalize.run(config)
 
-    if normalized_input not in DATABASE:
-        raise ValueError("Please select from these 3 only - SQLite, PostgreSQL, MySQL. Type name and press enter (default is SQLite)")
-
-
-def populate_config_ini_section():
-    pass
+    except KeyboardInterrupt:
+        Path(".tollgate.key.tmp").unlink(missing_ok=True)
+        Path("config.ini.tmp").unlink(missing_ok=True)
+        console.print(_ABORT_MSG)
+        sys.exit(0)

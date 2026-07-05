@@ -4,6 +4,18 @@ cli/__init__.py
 cli/init.py
 cli/helpers/__init__.py
 cli/helpers/initialize.py
+cli/inputs/__init__.py
+cli/inputs/accepted_inputs.py
+cli/steps/__init__.py
+cli/steps/admin_setup.py
+cli/steps/download_model.py
+cli/steps/finalize.py
+cli/steps/guardrail.py
+cli/steps/providers.py
+cli/steps/rate_limiting.py
+cli/steps/services.py
+cli/ui/__init__.py
+cli/ui/console.py
 src/__init__.py
 src/app/__init__.py
 src/app/adapters/__init__.py
@@ -21,6 +33,8 @@ src/app/factory/repository_factory.py
 src/app/injector/__init__.py
 src/app/injector/dependency_container.py
 src/app/injector/inject.py
+src/app/intelligence/__init__.py
+src/app/intelligence/llama.py
 src/app/limiter/__init__.py
 src/app/limiter/bucket.py
 src/app/limiter/store.py
@@ -67,6 +81,7 @@ src/llm/factory/__init__.py
 src/llm/factory/repository_factory.py
 src/llm/repository/__init__.py
 src/llm/repository/anthropic_repository.py
+src/llm/repository/gemini_repository.py
 src/llm/repository/model2vec_repository.py
 src/llm/repository/openai_repository.py
 src/router/__init__.py
@@ -77,6 +92,7 @@ src/router/core/latency.py
 src/router/core/pricing.py
 src/router/core/tokens.py
 src/utils/__init__.py
+src/utils/crypto.py
 src/utils/decorators.py
 src/utils/config/__init__.py
 src/utils/config/configuration.py

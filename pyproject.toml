@@ -5,7 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tollgate"
 version = "0.1.0"
-dependencies = ["click"]
+dependencies = [
+    "click",
+    "rich",
+    "cryptography",
+    "requests",
+]
 
 [project.scripts]
 tollgate = "cli:cli"

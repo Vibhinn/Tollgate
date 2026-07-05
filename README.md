@@ -185,7 +185,7 @@ DONE ─────────────────────────
 | 7  | Live EMA-based cost and latency ranking per model | ✅ Done |
 | 8  | `"cheap"` / `"fast"` / `"smart"` policy routing | ✅ Done |
 | 9  | Ports & adapters architecture with custom DI container | ✅ Done |
-| 10 | Add a dedicated CLI to setup the proxy on end user | 🔧 In Progress |
+| 10 | Add a dedicated CLI to setup the proxy on end user | ✅ Done |
 | 11 | Analytics dashboard endpoint (data collected, API stub) | 🔧 In Progress |
 | 12 | Gemini provider fully wired (config exists, adapter pending) | 🔧 In Progress |
 | 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |

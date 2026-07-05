@@ -34,7 +34,7 @@ class Builder:
     def __register_dependencies():
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory())
-        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory), container.resolve(RouterAdapter)))
+        container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory), container.resolve(RouterAdapter), container.resolve(Config)))
 
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(ApplicationRepositoryFactory),
                                                             container.resolve(RedisStreamRepository),
