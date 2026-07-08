@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 .tollgate.key
 src/app/intelligence/model/*
+.claude
