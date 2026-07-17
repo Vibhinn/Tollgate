@@ -17,6 +17,7 @@ cli/steps/services.py
 cli/ui/__init__.py
 cli/ui/console.py
 src/__init__.py
+src/analytics/__init__.py
 src/app/__init__.py
 src/app/adapters/__init__.py
 src/app/adapters/chat_adapter.py
@@ -28,13 +29,16 @@ src/app/endpoints/chat.py
 src/app/endpoints/generate_token.py
 src/app/endpoints/images.py
 src/app/endpoints/transcribe.py
+src/app/exceptions/__init__.py
+src/app/exceptions/classes.py
+src/app/exceptions/handlers/__init__.py
 src/app/factory/__init__.py
 src/app/factory/repository_factory.py
 src/app/injector/__init__.py
 src/app/injector/dependency_container.py
 src/app/injector/inject.py
 src/app/intelligence/__init__.py
-src/app/intelligence/llama.py
+src/app/intelligence/intelligence.py
 src/app/limiter/__init__.py
 src/app/limiter/bucket.py
 src/app/limiter/store.py
@@ -77,6 +81,7 @@ src/jobs/repository/__init__.py
 src/jobs/repository/redis_stream_repository.py
 src/llm/__init__.py
 src/llm/connection.py
+src/llm/providers.py
 src/llm/factory/__init__.py
 src/llm/factory/repository_factory.py
 src/llm/repository/__init__.py

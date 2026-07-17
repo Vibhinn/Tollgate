@@ -2,3 +2,4 @@ click
 rich
 cryptography
 requests
+pyyaml

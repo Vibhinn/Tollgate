@@ -1,27 +1,29 @@
 from uuid import uuid4
-from typing import override
+from typing import override, TYPE_CHECKING
 
-from numpy import ndarray
 from ..connection import CacheConnection
 from qdrant_client.models import PointStruct
 
 from src.app.ports import VectorDBRepositoryInterface
+from src.utils.types import VECTOR_REPOSITORY_COLLECTIONS
 
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 class QdrantRepository(VectorDBRepositoryInterface):
     def __init__(self):
         self.client = CacheConnection.get_connection("SEMANTIC")
-        self.collection_name = "semantic_cache"
 
     @override
     async def save(
         self,
         embedding: ndarray,
+        collection: VECTOR_REPOSITORY_COLLECTIONS,
         user_message: str,
         model_response: str
     ):
         self.client.upsert(
-            collection_name=self.collection_name,
+            collection_name=collection,
             points=[
                 PointStruct(
                     id=str(uuid4()),
@@ -35,20 +37,18 @@ class QdrantRepository(VectorDBRepositoryInterface):
         )
 
     @override
-    async def search(self, embedding: ndarray, score_threshold: float = 0.9):
+    async def search(self, collection: VECTOR_REPOSITORY_COLLECTIONS, embedding: ndarray, score_threshold: float = 0.9) -> dict:
         print("Embedding shape - ", embedding.shape)
         results = self.client.query_points(
-            collection_name=self.collection_name,
+            collection_name=collection,
             query=embedding[0].tolist(),
             limit=1,
             score_threshold=score_threshold
         )
 
         if not results.points:
-            return None
-
-        print("The result is - ", results)
-
-        return {
-            "response": results.points[0].payload["model_response"]
-        }
+            return {}
+        else:
+            return {
+                "response": results.points[0].payload["model_response"]
+            }

@@ -1,31 +1,29 @@
 import sys
-from configparser import ConfigParser
 from pathlib import Path
 
+import yaml
 from rich.prompt import Prompt, Confirm
 
 from ..ui import console, step_header, success, warn, error, info
 from .admin_setup import verify_password
 from src.utils.crypto import decrypt_value
 
-_CONFIG_PATH = Path("config.ini")
+_CONFIG_PATH = Path("config.yaml")
 
 
 def _config_is_initialized() -> bool:
     if not _CONFIG_PATH.exists():
         return False
-    parser = ConfigParser()
-    parser.read(_CONFIG_PATH)
-    return parser.has_section("ADMIN") and parser.has_option("ADMIN", "PASSWORD_HASH")
+    with open(_CONFIG_PATH) as f:
+        data = yaml.safe_load(f)
+    return bool(data and data.get("admin", {}).get("password_hash"))
 
 
 def _load_admin_credentials() -> tuple[str, str]:
-    parser = ConfigParser()
-    parser.read(_CONFIG_PATH)
-    encrypted_username = parser.get("ADMIN", "USERNAME")
-    password_hash = parser.get("ADMIN", "PASSWORD_HASH")
-
-    return decrypt_value(encrypted_username), password_hash
+    with open(_CONFIG_PATH) as f:
+        data = yaml.safe_load(f)
+    admin = data["admin"]
+    return decrypt_value(admin["username"]), admin["password_hash"]
 
 
 def run(config: dict) -> dict:
@@ -64,7 +62,7 @@ def run(config: dict) -> dict:
         if remaining > 0:
             error(f"Invalid credentials — {remaining} attempt{'s' if remaining > 1 else ''} remaining")
         else:
-            error("Too many failed attempts. Exiting.")
+            error("Too many failed attempts. This issue will be reported. Exiting.")
             sys.exit(1)
 
     console.print()

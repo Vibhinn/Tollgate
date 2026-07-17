@@ -6,9 +6,6 @@ from cryptography.fernet import Fernet
 from ..ui import console
 from ..steps import guardrail, download_model, services, admin_setup, providers, rate_limiting, finalize
 
-_ABORT_MSG = "\n\n  [bold yellow]Setup cancelled — no files were written.[/bold yellow]\n"
-
-
 def run_setup() -> None:
     from ..ui.console import print_banner
     print_banner()
@@ -27,6 +24,6 @@ def run_setup() -> None:
 
     except KeyboardInterrupt:
         Path(".tollgate.key.tmp").unlink(missing_ok=True)
-        Path("config.ini.tmp").unlink(missing_ok=True)
-        console.print(_ABORT_MSG)
+        Path("config.yaml.tmp").unlink(missing_ok=True)
+        console.print("\n\n  [bold yellow]Setup cancelled — no files were written.[/bold yellow]\n")
         sys.exit(0)

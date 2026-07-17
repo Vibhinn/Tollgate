@@ -27,7 +27,9 @@ class RoutingIntelligenceLayer:
 
     async def classify(self, user_message: str) -> str:
         request_embedding = await self.embedding_model_repo.create_vector_embeddings(user_message)
-        answer_from_vector_db = await self.vector_cache_repo.search(request_embedding, score_threshold=0.7)
+        answer_from_vector_db = await self.vector_cache_repo.search(collection="intelligence_classifier_cache",
+                                                                    embedding=request_embedding,
+                                                                    score_threshold=0.7)
 
         if answer_from_vector_db:
             return answer_from_vector_db
@@ -50,6 +52,6 @@ class RoutingIntelligenceLayer:
                 ),
             )
             model_response = result["choices"][0]["message"]["content"].strip()
-            await self.vector_cache_repo.save(request_embedding, user_message, model_response)
+            await self.vector_cache_repo.save(request_embedding, "intelligence_classifier_cache",  user_message, model_response)
 
             return model_response

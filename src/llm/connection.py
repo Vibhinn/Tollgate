@@ -1,24 +1,34 @@
+from typing import overload, Literal, TYPE_CHECKING
+
+from .providers import providers
+
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
 from model2vec import StaticModel
-from typing import overload, Literal, TYPE_CHECKING
+
+from src.utils.types import ConfigurationEnums
 
 if TYPE_CHECKING:
     from src.utils.types import LLM_PROVIDER
+    from src.utils.config import Config
 
 class LLMConnection:
-    _openai_conn: AsyncOpenAI = None
-    _anthropic_conn: AsyncAnthropic = None
-    _gemini_conn: genai.Client = None
-    _model2vec_conn: StaticModel = None
+    _connections: dict = {}
 
     @classmethod
-    def initialize(cls, openai_key: str, anthropic_key: str, gemini_key: str, model2vec_model: str):
-        cls._openai_conn = AsyncOpenAI(api_key=openai_key)
-        cls._anthropic_conn = AsyncAnthropic(api_key=anthropic_key)
-        cls._gemini_conn = genai.Client(api_key=gemini_key)
-        cls._model2vec_conn = StaticModel.from_pretrained(model2vec_model)
+    def initialize(cls, config: Config):
+        configured_models = config.get_entire_config_section("MODELS")
+
+        for provider in configured_models.keys():
+            configured_api_key: str = config.get_config("MODELS", "API_KEY", provider)
+            if configured_api_key == ConfigurationEnums.API_KEY_NOT_CONFIGURED.value:
+                ## API key is not configured there, so continue
+                continue
+
+            factory = providers.get(provider)
+            cls._connections[provider] = factory(config.get_config("MODELS", "API_KEY", provider))
+
 
     @overload
     @classmethod

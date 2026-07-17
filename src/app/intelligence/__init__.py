@@ -1,3 +1,3 @@
-from .llama import RoutingIntelligenceLayer
+from .intelligence import RoutingIntelligenceLayer
 
 __all__ = ["RoutingIntelligenceLayer"]

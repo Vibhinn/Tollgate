@@ -5,3 +5,4 @@ Requires-Dist: click
 Requires-Dist: rich
 Requires-Dist: cryptography
 Requires-Dist: requests
+Requires-Dist: pyyaml

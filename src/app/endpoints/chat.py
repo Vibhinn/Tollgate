@@ -24,7 +24,7 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
             }
         )
 
-    model_response = await chat_adapter.query_llm(model_name=requested_model, message=user_requirement.messages)
+    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages)
 
     if user_requirement.cache_type:
         caching_timeout_header = request.headers.get("X-Cache-TTL")
@@ -45,4 +45,3 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
             "message": model_response
         }
     )
-

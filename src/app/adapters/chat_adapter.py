@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING
 
+from ..exceptions import ModelSemanticNotFound
+
 if TYPE_CHECKING:
     from src.router import RouterRepository
     from ..factory import ApplicationRepositoryFactory
@@ -29,13 +31,14 @@ class ChatAdapter:
             return db_result
 
     async def query_llm(self, model_name: str, messages: list[Message]) -> str:
-        if model_name in {"fast", "cheap"}:
-            recommended_model = await self.router_repo.get_best_model(model_name)
-        elif model_name in {"smart"}:
-            recommended_model = await  self.router_repo.get_best_model(model_name, user_message=messages[-1])
+        if model_name in {"fast", "cheap", "smart"}:
+            recommended_model = await self.router_repo.get_best_model(
+                model_name,
+                user_message=messages[-1] if model_name == "smart" else None
+            )
+            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages)
         else:
-            raise # to do here
-        return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages)
+            raise ModelSemanticNotFound(f"Sorry, model type {model_name} is not recognized")
 
     async def add_job_to_queue(self, collection_name: REDIS_STREAM_NAMES, data: dict):
         await self.job_queue_manager.create_job(collection_name, data)
