@@ -7,3 +7,7 @@ __pycache__/
 .tollgate.key
 src/app/intelligence/model/*
 .claude
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
