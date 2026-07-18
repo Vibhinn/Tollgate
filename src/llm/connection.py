@@ -1,5 +1,7 @@
 from typing import overload, Literal, TYPE_CHECKING
 
+from h11 import _connection
+
 from .providers import providers
 
 from openai import AsyncOpenAI
@@ -48,13 +50,7 @@ class LLMConnection:
 
     @classmethod
     def get_connection(cls, provider: LLM_PROVIDER):
-        connection_map = {
-            "OPENAI": cls._openai_conn,
-            "ANTHROPIC": cls._anthropic_conn,
-            "GEMINI": cls._gemini_conn,
-            "EMBEDDING": cls._model2vec_conn
-        }
-        conn = connection_map.get(provider)
+        conn = cls._connections.get(provider)
         if not conn:
             raise ValueError(f"Provider {provider} not initialized or unknown")
         return conn

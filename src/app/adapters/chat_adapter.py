@@ -27,7 +27,7 @@ class ChatAdapter:
             return answer
         else:
             embedding = await self.embedding_repo.create_vector_embeddings(message)
-            db_result = await self.vector_db_repo.search(embedding)
+            db_result = await self.vector_db_repo.search("semantic_cache",embedding)
             return db_result
 
     async def query_llm(self, model_name: str, messages: list[Message]) -> str:
@@ -38,7 +38,7 @@ class ChatAdapter:
             )
             return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages)
         else:
-            raise ModelSemanticNotFound(f"Sorry, model type {model_name} is not recognized")
+            return await self.router_repo.invoke_model(model_name=model_name, messages=messages)
 
     async def add_job_to_queue(self, collection_name: REDIS_STREAM_NAMES, data: dict):
         await self.job_queue_manager.create_job(collection_name, data)

@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from src.app.exceptions import ModelSemanticNotFound
 from src.utils.types import AnalyticsJobData
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
@@ -24,7 +25,7 @@ class RouterRepository:
         repository = self.llm_repo_factory.get_repo(repository_name)
 
         if not repository:
-            return ""
+            raise ModelSemanticNotFound("Sorry, no such model found")
 
         start: float = time.monotonic()
         model_response = await repository.invoke(messages[-1].content, model_name)
