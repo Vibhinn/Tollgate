@@ -20,6 +20,7 @@ from src.jobs import RedisStreamRepository
 from src.jobs.helpers import AddToCache, AnalyticsJobHelper
 
 from src.utils.config import Config
+from src.utils.types import ApplicationRepositoryType, RedisStreamName
 
 from src.cache import CacheConnection
 
@@ -34,13 +35,20 @@ class Builder:
         self.config = Config()
 
     def build_and_initialize_app(self):
-        MiddlewareInstallation.install_middleware(self.app)
-        APIRouterInstallation.install_api_routers(self.app)
-
         self.__create_and_initialize_connections()
+
+        self.__install_middleware()
+        self.__install_routers()
+
         self.__register_exception_handlers()
         self.__register_dependencies()
         self.__setup_job_manager()
+
+    def __install_middleware(self):
+        MiddlewareInstallation.install_middleware(self.app)
+
+    def __install_routers(self):
+        APIRouterInstallation.install_api_routers(self.app)
 
     @staticmethod
     def __register_dependencies():
@@ -66,27 +74,27 @@ class Builder:
 
         container.register(RouterAdapter, lambda: RouterAdapter(
                                                                         container.resolve(RedisStreamRepository),
-                                                                        container.resolve(ApplicationRepositoryFactory).get_repo("RANKING"),
+                                                                        container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.RANKING),
                                                                         container.resolve(RoutingIntelligenceLayer)))
 
     @staticmethod
     def __setup_job_manager():
         repo_factory = container.resolve(ApplicationRepositoryFactory)
         add_to_cache = AddToCache(
-            exact_cache=repo_factory.get_repo("EXACT_CACHE"),
-            embedding_repo=repo_factory.get_repo("EMBEDDING"),
-            vector_cache=repo_factory.get_repo("VECTOR_CACHE")
+            exact_cache=repo_factory.get_repo(ApplicationRepositoryType.EXACT_CACHE),
+            embedding_repo=repo_factory.get_repo(ApplicationRepositoryType.EMBEDDING),
+            vector_cache=repo_factory.get_repo(ApplicationRepositoryType.VECTOR_CACHE)
         )
 
         scheduler = RedisStreamRepository()
-        scheduler.register_helper("RESPONSE_CACHE", add_to_cache)
-        scheduler.register_helper("ANALYTICS", None)
+        scheduler.register_helper(RedisStreamName.RESPONSE_CACHE, add_to_cache)
+        scheduler.register_helper(RedisStreamName.ANALYTICS, None)
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 
         analytics_helper = AnalyticsJobHelper(
-            ranking_repo=repo_factory.get_repo("RANKING")
+            ranking_repo=repo_factory.get_repo(ApplicationRepositoryType.RANKING)
         )
-        scheduler.register_helper("ANALYTICS", analytics_helper)
+        scheduler.register_helper(RedisStreamName.ANALYTICS, analytics_helper)
 
     def __register_exception_handlers(self):
         @self.app.exception_handler(ModelSemanticNotFound)

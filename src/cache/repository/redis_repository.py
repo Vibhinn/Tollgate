@@ -1,11 +1,12 @@
 from typing import override, Any
 
 from src.app.ports import CacheRepositoryInterface
+from src.utils.types import CacheType
 from ..connection import CacheConnection
 
 class RedisRepository(CacheRepositoryInterface):
     def __init__(self):
-        self.cache_conn = CacheConnection.get_connection("EXACT")
+        self.cache_conn = CacheConnection.get_connection(CacheType.EXACT)
 
     @override
     async def check_token_validity(self, token: str) -> bool:

@@ -2,6 +2,8 @@ import redis.asyncio as redis
 from qdrant_client import QdrantClient
 from typing import overload, Literal, TYPE_CHECKING
 
+from src.utils.types import CacheType
+
 if TYPE_CHECKING:
     from src.utils.types import CACHE_TYPE
 
@@ -16,16 +18,16 @@ class CacheConnection:
 
     @overload
     @classmethod
-    def get_connection(cls, connection_type: Literal["EXACT"]) -> redis.Redis: ...
+    def get_connection(cls, connection_type: Literal[CacheType.EXACT]) -> redis.Redis: ...
 
     @overload
     @classmethod
-    def get_connection(cls, connection_type: Literal["SEMANTIC"]) -> QdrantClient: ...
+    def get_connection(cls, connection_type: Literal[CacheType.SEMANTIC]) -> QdrantClient: ...
 
     @classmethod
     def get_connection(cls, connection_type: CACHE_TYPE):
         connection_map = {
-            "EXACT": cls._redis_conn,
-            "SEMANTIC": cls._vector_db_conn
+            CacheType.EXACT: cls._redis_conn,
+            CacheType.SEMANTIC: cls._vector_db_conn
         }
         return connection_map[connection_type]

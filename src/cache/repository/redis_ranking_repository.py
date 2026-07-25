@@ -1,10 +1,11 @@
 from src.app.ports import RankingRepositoryInterface
+from src.utils.types import CacheType
 
 from ..connection import CacheConnection
 
 class RedisRankingRepository(RankingRepositoryInterface):
     def __init__(self):
-        self.cache_conn = CacheConnection.get_connection("EXACT")
+        self.cache_conn = CacheConnection.get_connection(CacheType.EXACT)
 
     async def update_score(self, key: str, member: str, score: float) -> None:
         await self.cache_conn.zadd(key, {member: score})

@@ -26,9 +26,9 @@ from src.app.adapters.chat_adapter import ChatAdapter
 class FakeRepoManager:
     def __init__(self, vector_cache):
         self._repos = {
-            "EMBEDDING": AsyncMock(),
-            "VECTOR_CACHE": vector_cache,
-            "EXACT_CACHE": AsyncMock(),
+            "embedding": AsyncMock(),
+            "vector_cache": vector_cache,
+            "exact_cache": AsyncMock(),
         }
 
     def get_repo(self, repo_type):
@@ -43,7 +43,7 @@ def real_qdrant_repository(monkeypatch):
 
 async def test_semantic_cache_miss_crashes_with_the_real_qdrant_repository(real_qdrant_repository):
     repo_manager = FakeRepoManager(real_qdrant_repository)
-    repo_manager.get_repo("EXACT_CACHE").search.return_value = None
+    repo_manager.get_repo("exact_cache").search.return_value = None
 
     adapter = ChatAdapter(repo_manager, AsyncMock(), AsyncMock())
 

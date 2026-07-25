@@ -55,6 +55,6 @@ async def test_identify_model_intelligently_delegates_to_intelligence_layer(adap
 async def test_add_job_to_queue_delegates_to_job_queue_manager(adapter):
     router_adapter, job_queue_manager, _, _ = adapter
 
-    await router_adapter.add_job_to_queue("ANALYTICS", {"model_name": "gpt-4o"})
+    await router_adapter.add_job_to_queue("analytics", {"model_name": "gpt-4o"})
 
-    job_queue_manager.create_job.assert_awaited_once_with("ANALYTICS", {"model_name": "gpt-4o"})
+    job_queue_manager.create_job.assert_awaited_once_with("analytics", {"model_name": "gpt-4o"})

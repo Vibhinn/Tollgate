@@ -1,19 +1,19 @@
-MODELS:
-  OPENAI:
-    API_KEY: gAAAAABqWkEbm_n6jiDbQ9NMfGY3-cy1wZIWJQeA6ce7jY-Li_axAdTRsN6mePoLs3GmhbiEn37BjhDGYhkuRnw-QI_ENXHr1Q==
-  ANTHROPIC:
-    API_KEY: gAAAAABqWkEg7Fg16TVzzxmKO2l9LObVlafgiQ0NG3CaAxOQ5MNFx-Ls02IHANxMrJZ_rKvz-wHMWPO-VMAv0lknDV6S5iGyWQ==
-  GEMINI:
-    API_KEY: NOT_CONFIGURED
-EMBEDDING:
-  MODEL_NAME: minishlab/potion-base-8M
-RATE_LIMITER:
-  MAX_TOKENS: '500'
-  REFILL_RATE: '100'
-  TIME_INTERVAL: '1.0'
-GATEWAY:
-  DEFAULT_MODEL: claude-opus-4-6
-  DEFAULT_TEMPERATURE: '0.7'
-ADMIN:
-  USERNAME: gAAAAABqWkEN_NB_-YGGxxZEdIkuNrtK862R6F0QGbmuFM8LFyA9s8_uS0_lOBdBvHZRvNZyiBPnyfigpXCKIN05C-GMZPm4tA==
-  PASSWORD_HASH: oZBHOvsL+3ts2MZNUntuc9rMaunDONZ+3Di2c4xBcwPz1RQJ9bJ4z9z8CopXUSBw
+models:
+  openai:
+    api_key: NOT_CONFIGURED
+  anthropic:
+    api_key: gAAAAABqWzq6Ch4Eps4FwY4jisCNW1cGAvvvmxANaUKQ-b53GvVu3-kVpye0MMmnikPeCtMHktkkboy6lAhW8jZzjgPGitP75-XKTQFholjPYoqz2zGzjlfu_DF_gz8LQcrA5sGX_3cGj30HHrCpqwjexdi3gpEhFdgn5I05Fd87If-8f-4R1V_Xa5GVvSdka4IfrDsykaErsfoZiV7HRyl-hAG019GmfA==
+  gemini:
+    api_key: NOT_CONFIGURED
+embedding:
+  model_name: minishlab/potion-base-8M
+rate_limiter:
+  max_tokens: '500'
+  refill_rate: '100'
+  time_interval: '1.0'
+gateway:
+  default_model: claude-sonnet-4-6
+  default_temperature: '0.7'
+admin:
+  username: gAAAAABqWzq0ZuolfIXp3sv5EVKviJouF_ZUfgRlNoSwjYoTr2mwIi-cdpTGwHqnMkz2wMLktIfF4PANnIw7rkQUy3yw0eAj2A==
+  password_hash: s/TD1HuGAbptmjmfB8HsUrxisO6JMz/HWwu892qpLonaoocmJs3HAL4wra2UEhp8

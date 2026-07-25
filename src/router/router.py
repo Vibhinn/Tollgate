@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from src.app.exceptions import ModelSemanticNotFound
-from src.utils.types import AnalyticsJobData
+from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
@@ -39,7 +39,7 @@ class RouterRepository:
             timestamp=datetime.utcnow().isoformat()
         )
 
-        await self.router_adapter.add_job_to_queue(collection_name="ANALYTICS", data=analytics_object) #type: ignore
+        await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore
         return model_response.content[0].text
 
     async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:
@@ -48,4 +48,4 @@ class RouterRepository:
         elif requirement in {"smart"}:
             return await self.router_adapter.identify_model_intelligently(user_message.content) #type: ignore
         else:
-            return self.config.get_config("GATEWAY", "DEFAULT_MODEL")
+            return self.config.get_config(ConfigurationSection.GATEWAY, ConfigurationOption.DEFAULT_MODEL)

@@ -1,15 +1,60 @@
 from typing import Literal
 
-REDIS_STREAM_NAMES = Literal["RESPONSE_CACHE", "ANALYTICS"]
-REPOSITORY_TYPE = Literal["EMBEDDING", "DATABASE", "VECTOR_DB", "CACHE", "ROUTER", "RANKING"]
-ADAPTER_TYPE = Literal["CHAT"]
-CONFIGURATION_SECTIONS = Literal["MODELS", "EMBEDDING", "RATE_LIMITER", "GATEWAY"]
-CONFIGURATION_OPTIONS = Literal["ENDPOINT", "API_KEY", "MODEL_NAME", "MAX_TOKENS", "REFILL_RATE", "TIME_INTERVAL", "DEFAULT_MODEL"]
-CONFIGURATION_SUB_SECTIONS = Literal["OPENAI", "ANTHROPIC", "GEMINI", None]
-LLM_PROVIDER = Literal["OPENAI", "ANTHROPIC", "GEMINI", "EMBEDDING"]
-QUEUE_TYPE = Literal["REDIS_STREAM"]
+from .enums import (
+    LLMProvider,
+    CacheType,
+    ApplicationRepositoryType,
+    RedisStreamName,
+    VectorRepositoryCollection,
+    ConfigurationSection,
+    ConfigurationOption,
+    ConfigurationSubSection,
+    QueueType,
+    AdapterType,
+)
 
-CACHE_TYPE = Literal["EXACT", "SEMANTIC"]
+REDIS_STREAM_NAMES = Literal[RedisStreamName.RESPONSE_CACHE, RedisStreamName.ANALYTICS]
+REPOSITORY_TYPE = Literal[
+    ApplicationRepositoryType.EMBEDDING,
+    ApplicationRepositoryType.VECTOR_CACHE,
+    ApplicationRepositoryType.EXACT_CACHE,
+    ApplicationRepositoryType.RANKING,
+]
+ADAPTER_TYPE = Literal[AdapterType.CHAT]
 
-VECTOR_REPOSITORY_COLLECTIONS = Literal["semantic_cache", "intelligence_classifier_cache"]
+CONFIGURATION_SECTIONS = Literal[
+    ConfigurationSection.MODELS,
+    ConfigurationSection.EMBEDDING,
+    ConfigurationSection.RATE_LIMITER,
+    ConfigurationSection.GATEWAY,
+]
+CONFIGURATION_OPTIONS = Literal[
+    ConfigurationOption.ENDPOINT,
+    ConfigurationOption.API_KEY,
+    ConfigurationOption.MODEL_NAME,
+    ConfigurationOption.MAX_TOKENS,
+    ConfigurationOption.REFILL_RATE,
+    ConfigurationOption.TIME_INTERVAL,
+    ConfigurationOption.DEFAULT_MODEL,
+]
+CONFIGURATION_SUB_SECTIONS = Literal[
+    ConfigurationSubSection.OPENAI,
+    ConfigurationSubSection.ANTHROPIC,
+    ConfigurationSubSection.GEMINI,
+    None,
+]
 
+LLM_PROVIDER = Literal[
+    LLMProvider.OPENAI,
+    LLMProvider.ANTHROPIC,
+    LLMProvider.GEMINI,
+    LLMProvider.EMBEDDING,
+]
+QUEUE_TYPE = Literal[QueueType.REDIS_STREAM]
+
+CACHE_TYPE = Literal[CacheType.EXACT, CacheType.SEMANTIC]
+
+VECTOR_REPOSITORY_COLLECTIONS = Literal[
+    VectorRepositoryCollection.SEMANTIC_CACHE,
+    VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,
+]

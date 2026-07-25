@@ -2,7 +2,8 @@ import asyncio
 import json
 from src.cache import CacheConnection
 from src.app.ports import JobQueueRepositoryInterface
-from typing import overload, TYPE_CHECKING
+from src.utils.types import CacheType, RedisStreamName
+from typing import overload, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..helpers.base import BaseHelper
@@ -13,7 +14,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
     """Creates redis stream jobs and runs a background worker to process them"""
 
     def __init__(self):
-        self.redis_client = CacheConnection.get_connection("EXACT")
+        self.redis_client = CacheConnection.get_connection(CacheType.EXACT)
         self._helper_registry: dict[str, BaseHelper] = {}
         self._task: asyncio.Task | None = None
 
@@ -36,10 +37,10 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
                         await helper.execute(data)
 
     @overload
-    async def create_job(self, stream_name: REDIS_STREAM_NAMES.RESPONSE_CACHE, data: CacheJobData) -> None: ...
+    async def create_job(self, stream_name: Literal[RedisStreamName.RESPONSE_CACHE], data: CacheJobData) -> None: ...
 
     @overload
-    async def create_job(self, stream_name: REDIS_STREAM_NAMES.VECTORIZE, data: CacheJobData) -> None: ...
+    async def create_job(self, stream_name: Literal[RedisStreamName.ANALYTICS], data: CacheJobData) -> None: ...
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
         payload: StreamPayload = {"payload": json.dumps(data)}

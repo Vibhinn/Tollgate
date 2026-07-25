@@ -47,7 +47,7 @@ def test_chat_model_cache_type_defaults_to_none():
     assert chat.cache_type is None
 
 
-@pytest.mark.parametrize("cache_type", ["EXACT", "SEMANTIC"])
+@pytest.mark.parametrize("cache_type", ["exact", "semantic"])
 def test_chat_model_accepts_valid_cache_types(cache_type):
     chat = ChatModel(**base_chat_payload(cache_type=cache_type))
     assert chat.cache_type == cache_type

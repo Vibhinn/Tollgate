@@ -11,9 +11,9 @@ def store(monkeypatch, fake_config):
 
 def test_reads_bucket_parameters_from_config(store, fake_config):
     bucket = store.get_user_bucket("user-1")
-    assert bucket.max_tokens == int(fake_config.get_config("RATE_LIMITER", "MAX_TOKENS"))
-    assert bucket.refill_rate == int(fake_config.get_config("RATE_LIMITER", "REFILL_RATE"))
-    assert bucket.time_interval == float(fake_config.get_config("RATE_LIMITER", "TIME_INTERVAL"))
+    assert bucket.max_tokens == int(fake_config.get_config("rate_limiter", "max_tokens"))
+    assert bucket.refill_rate == int(fake_config.get_config("rate_limiter", "refill_rate"))
+    assert bucket.time_interval == float(fake_config.get_config("rate_limiter", "time_interval"))
 
 
 def test_same_user_gets_same_bucket_instance(store):

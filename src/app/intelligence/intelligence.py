@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from llama_cpp import Llama, LlamaGrammar
 
+from src.utils.types import ApplicationRepositoryType, VectorRepositoryCollection
+
 if TYPE_CHECKING:
     from src.app.factory import ApplicationRepositoryFactory
 
@@ -22,12 +24,12 @@ class RoutingIntelligenceLayer:
             r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
         )
 
-        self.embedding_model_repo = repo_factory.get_repo("EMBEDDING")
-        self.vector_cache_repo = repo_factory.get_repo("VECTOR_CACHE")
+        self.embedding_model_repo = repo_factory.get_repo(ApplicationRepositoryType.EMBEDDING)
+        self.vector_cache_repo = repo_factory.get_repo(ApplicationRepositoryType.VECTOR_CACHE)
 
     async def classify(self, user_message: str) -> str:
         request_embedding = await self.embedding_model_repo.create_vector_embeddings(user_message)
-        answer_from_vector_db = await self.vector_cache_repo.search(collection="intelligence_classifier_cache",
+        answer_from_vector_db = await self.vector_cache_repo.search(collection=VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,
                                                                     embedding=request_embedding,
                                                                     score_threshold=0.7)
 
@@ -52,6 +54,6 @@ class RoutingIntelligenceLayer:
                 ),
             )
             model_response = result["choices"][0]["message"]["content"].strip()
-            await self.vector_cache_repo.save(request_embedding, "intelligence_classifier_cache",  user_message, model_response)
+            await self.vector_cache_repo.save(request_embedding, VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,  user_message, model_response)
 
             return model_response

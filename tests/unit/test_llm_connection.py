@@ -28,20 +28,20 @@ def reset_connections():
 
 
 def test_get_connection_currently_raises_due_to_attribute_mismatch():
-    LLMConnection._connections["OPENAI"] = object()
+    LLMConnection._connections["openai"] = object()
 
     with pytest.raises(AttributeError, match="_openai_conn"):
-        LLMConnection.get_connection("OPENAI")
+        LLMConnection.get_connection("openai")
 
 
 def test_initialize_skips_unconfigured_providers(fake_config):
     config_data = {
-        "MODELS": {
-            "OPENAI": {"API_KEY": "NOT_CONFIGURED"},
+        "models": {
+            "openai": {"api_key": "NOT_CONFIGURED"},
         }
     }
     fake_config._data = config_data
 
     LLMConnection.initialize(fake_config)
 
-    assert "OPENAI" not in LLMConnection._connections
+    assert "openai" not in LLMConnection._connections

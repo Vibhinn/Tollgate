@@ -45,7 +45,7 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
 
     router_adapter.add_job_to_queue.assert_awaited_once()
     call_args, call_kwargs = router_adapter.add_job_to_queue.await_args
-    assert call_kwargs["collection_name"] == "ANALYTICS"
+    assert call_kwargs["collection_name"] == "analytics"
     analytics_payload = call_kwargs["data"]
     assert analytics_payload["model_name"] == "gpt-4o"
     assert analytics_payload["input_tokens"] == 10
@@ -85,6 +85,6 @@ async def test_get_best_model_smart_uses_intelligence_layer_with_message_content
 async def test_get_best_model_falls_back_to_configured_default(router_repository, router_adapter, fake_config):
     result = await router_repository.get_best_model("unrecognized-policy")
 
-    assert result == fake_config.get_config("GATEWAY", "DEFAULT_MODEL")
+    assert result == fake_config.get_config("gateway", "default_model")
     router_adapter.get_best_model.assert_not_awaited()
     router_adapter.identify_model_intelligently.assert_not_awaited()

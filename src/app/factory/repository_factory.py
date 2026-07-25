@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository
 from src.llm import Model2VecRepository
 from src.utils import singleton
+from src.utils.types import ApplicationRepositoryType
 
 @singleton
 class ApplicationRepositoryFactory:
@@ -21,20 +22,20 @@ class ApplicationRepositoryFactory:
         self.__ranking_repo = RedisRankingRepository()
 
         self.__repo_map = {
-            "EMBEDDING": self.__embedding_repo,
-            "VECTOR_CACHE": self.__vector_db_repo,
-            "EXACT_CACHE": self.__redis_repo,
-            "RANKING": self.__ranking_repo
+            ApplicationRepositoryType.EMBEDDING: self.__embedding_repo,
+            ApplicationRepositoryType.VECTOR_CACHE: self.__vector_db_repo,
+            ApplicationRepositoryType.EXACT_CACHE: self.__redis_repo,
+            ApplicationRepositoryType.RANKING: self.__ranking_repo
         }
 
     @overload
-    def get_repo(self, repo_type: Literal["EMBEDDING"]) -> VectorEmbeddingRepositoryInterface: ...
+    def get_repo(self, repo_type: Literal[ApplicationRepositoryType.EMBEDDING]) -> VectorEmbeddingRepositoryInterface: ...
     @overload
-    def get_repo(self, repo_type: Literal["VECTOR_CACHE"]) -> VectorDBRepositoryInterface: ...
+    def get_repo(self, repo_type: Literal[ApplicationRepositoryType.VECTOR_CACHE]) -> VectorDBRepositoryInterface: ...
     @overload
-    def get_repo(self, repo_type: Literal["EXACT_CACHE"]) -> CacheRepositoryInterface: ...
+    def get_repo(self, repo_type: Literal[ApplicationRepositoryType.EXACT_CACHE]) -> CacheRepositoryInterface: ...
     @overload
-    def get_repo(self, repo_type: Literal["RANKING"]) -> RankingRepositoryInterface: ...
+    def get_repo(self, repo_type: Literal[ApplicationRepositoryType.RANKING]) -> RankingRepositoryInterface: ...
 
     def get_repo(self, repo_type: REPOSITORY_TYPE) -> object:
         return self.__repo_map[repo_type]

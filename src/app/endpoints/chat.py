@@ -5,7 +5,7 @@ from ..injector import get_chat_adapter
 
 from ..adapters import ChatAdapter
 from ..validators import ChatModel
-from src.utils.types import CacheJobData
+from src.utils.types import CacheJobData, RedisStreamName
 
 chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -36,7 +36,7 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
             timeout=cache_timeout
         )
 
-        await chat_adapter.add_job_to_queue("RESPONSE_CACHE", job_data)
+        await chat_adapter.add_job_to_queue(RedisStreamName.RESPONSE_CACHE, job_data)
 
     return JSONResponse(
         status_code=200,

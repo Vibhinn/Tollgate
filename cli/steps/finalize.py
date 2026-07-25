@@ -21,23 +21,23 @@ def run(config: dict) -> dict:
     step_header(6, "Writing Configuration", total=6)
 
     data = {
-        "MODELS": {
-            meta["config_key"].upper(): {
-                "API_KEY": config["api_keys"].get(meta["config_key"], "NOT_CONFIGURED")
+        "models": {
+            meta["config_key"].lower(): {
+                "api_key": config["api_keys"].get(meta["config_key"], "NOT_CONFIGURED")
             }
             for meta in PROVIDERS.values()
         },
-        "EMBEDDING": {
-            "MODEL_NAME": config["embedding_model"],
+        "embedding": {
+            "model_name": config["embedding_model"],
         },
-        "RATE_LIMITER": {k.upper(): v for k, v in config["rate_limiter"].items()},
-        "GATEWAY": {
-            "DEFAULT_MODEL": config["default_model"],
-            "DEFAULT_TEMPERATURE": config["default_temperature"],
+        "rate_limiter": config["rate_limiter"],
+        "gateway": {
+            "default_model": config["default_model"],
+            "default_temperature": config["default_temperature"],
         },
-        "ADMIN": {
-            "USERNAME": config["admin"]["username"],
-            "PASSWORD_HASH": config["admin"]["password_hash"],
+        "admin": {
+            "username": config["admin"]["username"],
+            "password_hash": config["admin"]["password_hash"],
         },
     }
 

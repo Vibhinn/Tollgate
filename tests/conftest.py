@@ -16,14 +16,14 @@ class FakeConfig:
 
     def __init__(self, data: dict | None = None):
         self._data = data or {
-            "RATE_LIMITER": {
-                "MAX_TOKENS": "5",
-                "REFILL_RATE": "1",
-                "TIME_INTERVAL": "1.0",
+            "rate_limiter": {
+                "max_tokens": "5",
+                "refill_rate": "1",
+                "time_interval": "1.0",
             },
-            "GATEWAY": {
-                "DEFAULT_MODEL": "claude-opus-4-6",
-                "DEFAULT_TEMPERATURE": "0.7",
+            "gateway": {
+                "default_model": "claude-opus-4-6",
+                "default_temperature": "0.7",
             },
         }
 

@@ -11,7 +11,7 @@ class FakeRepoManager:
         self._exact_cache = exact_cache
 
     def get_repo(self, repo_type):
-        assert repo_type == "EXACT_CACHE"
+        assert repo_type == "exact_cache"
         return self._exact_cache
 
 

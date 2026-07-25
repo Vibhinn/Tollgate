@@ -11,9 +11,9 @@ class FakeRepoManager:
 
     def __init__(self, embedding=None, vector_cache=None, exact_cache=None):
         self._repos = {
-            "EMBEDDING": embedding or AsyncMock(),
-            "VECTOR_CACHE": vector_cache or AsyncMock(),
-            "EXACT_CACHE": exact_cache or AsyncMock(),
+            "embedding": embedding or AsyncMock(),
+            "vector_cache": vector_cache or AsyncMock(),
+            "exact_cache": exact_cache or AsyncMock(),
         }
 
     def get_repo(self, repo_type):
@@ -117,6 +117,6 @@ async def test_add_job_to_queue_delegates_to_job_manager(build_adapter):
     job_manager = AsyncMock()
     adapter, _ = build_adapter(job_manager=job_manager)
 
-    await adapter.add_job_to_queue("RESPONSE_CACHE", {"foo": "bar"})
+    await adapter.add_job_to_queue("response_cache", {"foo": "bar"})
 
-    job_manager.create_job.assert_awaited_once_with("RESPONSE_CACHE", {"foo": "bar"})
+    job_manager.create_job.assert_awaited_once_with("response_cache", {"foo": "bar"})

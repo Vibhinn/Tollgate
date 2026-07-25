@@ -46,9 +46,9 @@ def run(config: dict) -> dict:
     console.print(table)
 
     config["rate_limiter"] = {
-        "MAX_TOKENS": str(max_tokens),
-        "REFILL_RATE": str(refill_rate),
-        "TIME_INTERVAL": str(time_interval),
+        "max_tokens": str(max_tokens),
+        "refill_rate": str(refill_rate),
+        "time_interval": str(time_interval),
     }
 
     success("Rate limiter configured")

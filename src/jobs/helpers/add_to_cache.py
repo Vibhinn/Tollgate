@@ -1,6 +1,6 @@
 import json
 from typing import override, TYPE_CHECKING
-from src.utils.types import CacheJobData
+from src.utils.types import CacheJobData, CacheType
 from .base import BaseHelper
 
 if TYPE_CHECKING:
@@ -28,14 +28,14 @@ class AddToCache(BaseHelper):
         payload: CacheJobData = CacheJobData(**json.loads(payload_raw))
         cache_type = payload.get("cache_type")
 
-        if cache_type == "EXACT":
+        if cache_type == CacheType.EXACT:
             await self.exact_cache.save(
                 key=payload.get("user_message"),
                 value=payload.get("model_response"),
                 timeout=payload.get("timeout")
             )
 
-        elif cache_type == "SEMANTIC":
+        elif cache_type == CacheType.SEMANTIC:
             embedding = await self.embedding_repo.create_vector_embeddings(payload.get("user_message"))
             await self.vector_cache.save(
                 embedding=embedding,

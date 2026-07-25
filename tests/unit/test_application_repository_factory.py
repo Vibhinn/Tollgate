@@ -22,24 +22,24 @@ def factory(monkeypatch):
 
 
 def test_embedding_repo_is_model2vec_repository(factory):
-    assert isinstance(factory.get_repo("EMBEDDING"), Model2VecRepository)
+    assert isinstance(factory.get_repo("embedding"), Model2VecRepository)
 
 
 def test_vector_cache_repo_is_qdrant_repository(factory):
-    assert isinstance(factory.get_repo("VECTOR_CACHE"), QdrantRepository)
+    assert isinstance(factory.get_repo("vector_cache"), QdrantRepository)
 
 
 def test_exact_cache_repo_is_redis_repository(factory):
-    assert isinstance(factory.get_repo("EXACT_CACHE"), RedisRepository)
+    assert isinstance(factory.get_repo("exact_cache"), RedisRepository)
 
 
 def test_ranking_repo_is_redis_ranking_repository(factory):
-    assert isinstance(factory.get_repo("RANKING"), RedisRankingRepository)
+    assert isinstance(factory.get_repo("ranking"), RedisRankingRepository)
 
 
 def test_get_repo_returns_same_instance_on_repeated_calls(factory):
-    first = factory.get_repo("EXACT_CACHE")
-    second = factory.get_repo("EXACT_CACHE")
+    first = factory.get_repo("exact_cache")
+    second = factory.get_repo("exact_cache")
     assert first is second
 
 

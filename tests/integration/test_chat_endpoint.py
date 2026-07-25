@@ -70,13 +70,13 @@ def test_cache_type_enqueues_response_cache_job_with_default_ttl(client, chat_ad
     chat_adapter.check_cache.return_value = None
     chat_adapter.query_llm.return_value = "fresh llm reply"
 
-    client.post("/api/v1/chat/completions", json=chat_body(cache_type="SEMANTIC"))
+    client.post("/api/v1/chat/completions", json=chat_body(cache_type="semantic"))
 
     chat_adapter.add_job_to_queue.assert_called_once()
     args, _ = chat_adapter.add_job_to_queue.call_args
-    assert args[0] == "RESPONSE_CACHE"
+    assert args[0] == "response_cache"
     job_data = args[1]
-    assert job_data["cache_type"] == "SEMANTIC"
+    assert job_data["cache_type"] == "semantic"
     assert job_data["user_message"] == "hello there"
     assert job_data["model_response"] == "fresh llm reply"
     assert job_data["timeout"] == 3600
@@ -88,7 +88,7 @@ def test_x_cache_ttl_header_overrides_default_timeout(client, chat_adapter):
 
     client.post(
         "/api/v1/chat/completions",
-        json=chat_body(cache_type="EXACT"),
+        json=chat_body(cache_type="exact"),
         headers={"X-Cache-TTL": "120"},
     )
 

@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from ..exceptions import ModelSemanticNotFound
+from src.utils.types import ApplicationRepositoryType, VectorRepositoryCollection
 
 if TYPE_CHECKING:
     from src.router import RouterRepository
@@ -14,9 +15,9 @@ class ChatAdapter:
                  job_manager: JobQueueRepositoryInterface,
                  router_manager: RouterRepository):
         self.repo_manager = repo_manager
-        self.embedding_repo = self.repo_manager.get_repo("EMBEDDING")
-        self.vector_db_repo = self.repo_manager.get_repo("VECTOR_CACHE")
-        self.kv_cache_repo = self.repo_manager.get_repo("EXACT_CACHE")
+        self.embedding_repo = self.repo_manager.get_repo(ApplicationRepositoryType.EMBEDDING)
+        self.vector_db_repo = self.repo_manager.get_repo(ApplicationRepositoryType.VECTOR_CACHE)
+        self.kv_cache_repo = self.repo_manager.get_repo(ApplicationRepositoryType.EXACT_CACHE)
         self.router_repo = router_manager
         self.job_queue_manager = job_manager
 
@@ -27,7 +28,7 @@ class ChatAdapter:
             return answer
         else:
             embedding = await self.embedding_repo.create_vector_embeddings(message)
-            db_result = await self.vector_db_repo.search("semantic_cache",embedding)
+            db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding)
             return db_result
 
     async def query_llm(self, model_name: str, messages: list[Message]) -> str:

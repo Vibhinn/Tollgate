@@ -5,14 +5,14 @@ from ..connection import CacheConnection
 from qdrant_client.models import PointStruct
 
 from src.app.ports import VectorDBRepositoryInterface
-from src.utils.types import VECTOR_REPOSITORY_COLLECTIONS
+from src.utils.types import VECTOR_REPOSITORY_COLLECTIONS, CacheType
 
 if TYPE_CHECKING:
     from numpy import ndarray
 
 class QdrantRepository(VectorDBRepositoryInterface):
     def __init__(self):
-        self.client = CacheConnection.get_connection("SEMANTIC")
+        self.client = CacheConnection.get_connection(CacheType.SEMANTIC)
 
     @override
     async def save(
