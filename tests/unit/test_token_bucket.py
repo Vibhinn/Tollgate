@@ -17,7 +17,7 @@ class FakeClock:
 @pytest.fixture
 def clock(monkeypatch):
     fake_clock = FakeClock()
-    monkeypatch.setattr("src.app.limiter.bucket.time.time", fake_clock.time)
+    monkeypatch.setattr("src.app.api.limiter.bucket.time.time", fake_clock.time)
     return fake_clock
 
 
