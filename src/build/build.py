@@ -88,7 +88,6 @@ class Builder:
 
         scheduler = RedisStreamRepository()
         scheduler.register_helper(RedisStreamName.RESPONSE_CACHE, add_to_cache)
-        scheduler.register_helper(RedisStreamName.ANALYTICS, None)
         container.register(RedisStreamRepository, lambda: scheduler, singleton=True)
 
         analytics_helper = AnalyticsJobHelper(

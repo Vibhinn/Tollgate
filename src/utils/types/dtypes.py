@@ -15,7 +15,6 @@ class CacheJobData(TypedDict):
 class StreamPayload(TypedDict):
     payload: str
 
-
 class AnalyticsJobData(TypedDict):
     model_name: str
     input_tokens: int
