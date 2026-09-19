@@ -4,8 +4,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.middleware import auth as auth_module
-from app.api.middleware import AuthenticationMiddleware
+from src.app.api.middleware import auth as auth_module
+from src.app.api.middleware import AuthenticationMiddleware
 
 
 @pytest.fixture

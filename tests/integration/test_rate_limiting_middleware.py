@@ -4,8 +4,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.middleware import rate_limiting as rate_limiting_module
-from app.api.middleware import RateLimitingMiddleware
+from src.app.api.middleware import rate_limiting as rate_limiting_module
+from src.app.api.middleware import RateLimitingMiddleware
 
 
 class FakeBucket:
