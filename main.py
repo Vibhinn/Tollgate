@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
-from src.build import Builder
+from build import Builder
 from src.app.injector import container
 from src.jobs import RedisStreamRepository
 

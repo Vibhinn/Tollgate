@@ -21,11 +21,11 @@ class RouterRepository:
         self.config = config
 
     async def invoke_model(self, model_name: str, messages: list[Message]) -> str:
-        repository_name: str = self.routing_table.get(model_name).get("provider")
-        repository = self.llm_repo_factory.get_repo(repository_name)
+        model_provider_name: str = self.routing_table.get(model_name).get("provider")
+        repository = self.llm_repo_factory.get_repo(model_provider_name)
 
         if not repository:
-            raise ModelSemanticNotFound("Sorry, no such model found")
+            raise ModelSemanticNotFound("Sorry, the provider is not supported by Tollgate at this moment. Please retry with a new one")
 
         start: float = time.monotonic()
         model_response = await repository.invoke(messages[-1].content, model_name)
@@ -36,7 +36,7 @@ class RouterRepository:
             input_tokens=model_response.usage.input_tokens,
             output_tokens=model_response.usage.output_tokens,
             latency_ms=latency_ms,
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now().isoformat()
         )
 
         await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore

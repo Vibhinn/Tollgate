@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from ..injector import get_chat_adapter
 
 from ..adapters import ChatAdapter
-from ..validators import ChatModel
+from .validators import ChatModel
 from src.utils.types import CacheJobData, RedisStreamName
 
 chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])

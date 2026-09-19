@@ -5,12 +5,12 @@ from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware
-from ..limiter.store import RateLimiterStore
+from app.api.limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 
 if TYPE_CHECKING:
-    from ..ports import CacheRepositoryInterface
+    from src.app.ports import CacheRepositoryInterface
 
 
 class RateLimitingMiddleware(BaseMiddleware):

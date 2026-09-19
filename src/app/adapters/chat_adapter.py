@@ -1,13 +1,12 @@
 from typing import TYPE_CHECKING
 
-from ..exceptions import ModelSemanticNotFound
 from src.utils.types import ApplicationRepositoryType, VectorRepositoryCollection
 
 if TYPE_CHECKING:
     from src.router import RouterRepository
     from ..factory import ApplicationRepositoryFactory
     from ..ports import JobQueueRepositoryInterface
-    from ..validators import Message
+    from app.api.validators import Message
     from src.utils.types import REDIS_STREAM_NAMES
 
 class ChatAdapter:

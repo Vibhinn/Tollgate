@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.limiter.bucket import TokenBucket
+from app.api.limiter import TokenBucket
 
 
 class FakeClock:

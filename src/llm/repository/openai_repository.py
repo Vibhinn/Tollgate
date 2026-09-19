@@ -15,7 +15,7 @@ class OpenAIRepository(LLMRepositoryInterface):
         self.openai_client = LLMConnection.get_connection(LLMProvider.OPENAI)
 
     @override
-    async def invoke(self, message: str, model_name: str) -> "ChatCompletion":
+    async def invoke(self, message: str, model_name: str) -> ChatCompletion:
         response = await self.openai_client.chat.completions.create(
             model=model_name,
             messages=[{"role": "user", "content": message}],

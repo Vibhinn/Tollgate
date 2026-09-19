@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import JSONResponse
 
-from ..validators import GenerateTokenRequest
+from .validators import GenerateTokenRequest
 from ..adapters import GenerateAccessTokenAdapter
 
 from ..injector import get_generate_token_adapter

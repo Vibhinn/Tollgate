@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.limiter.store import RateLimiterStore
+from app.api.limiter import RateLimiterStore
 
 
 @pytest.fixture

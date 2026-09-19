@@ -7,7 +7,7 @@ from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 
 if TYPE_CHECKING:
-    from ..ports import CacheRepositoryInterface
+    from src.app.ports import CacheRepositoryInterface
 
 class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
