@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from starlette.responses import JSONResponse
 from fastapi.testclient import TestClient
 
-from src.app.endpoints.chat import chat_api_router
+from src.app.api.chat import chat_api_router
 from src.app.injector.inject import get_chat_adapter
 from src.app.exceptions import ModelSemanticNotFound
 

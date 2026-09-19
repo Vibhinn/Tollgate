@@ -1,5 +1,7 @@
 import functools
 import threading
+import inspect
+
 
 def singleton(cls):
     """
@@ -29,3 +31,39 @@ def singleton(cls):
     get_instance.reset = lambda: instances.pop(cls, None)
 
     return get_instance
+
+
+class UndeclaredException(Exception):
+    pass
+
+def throws_exception(*exceptions, strict: bool = True):
+    """For wrapping functions - list all the exceptions you """
+
+    def decorator(func):
+        is_async_function: bool = inspect.iscoroutinefunction(func)
+
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except exceptions:
+                raise
+            except Exception as e:
+                if strict:
+                    raise UndeclaredException(e) from e
+                raise
+
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except exceptions:
+                raise
+            except Exception as e:
+                if strict:
+                    raise UndeclaredException(e) from e
+                raise
+
+        return async_wrapper if is_async_function else sync_wrapper
+
+    return decorator

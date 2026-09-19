@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.app.middleware import AuthenticationMiddleware, RateLimitingMiddleware
-from src.app.endpoints import chat_api_router, image_api_router, transcription_api_router, generate_access_token_router
+from src.app.api import chat_api_router, image_api_router, transcription_api_router, generate_access_token_router
 
 class MiddlewareInstallation:
     @staticmethod

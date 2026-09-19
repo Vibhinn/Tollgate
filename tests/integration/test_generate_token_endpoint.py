@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.app.endpoints.generate_token import generate_access_token_router
+from src.app.api.generate_token import generate_access_token_router
 from src.app.injector.inject import get_generate_token_adapter
 
 
