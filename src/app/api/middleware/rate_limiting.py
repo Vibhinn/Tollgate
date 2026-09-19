@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware
-from app.api.limiter.store import RateLimiterStore
+from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 

@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.api.validators import ChatModel
-from app.api.validators.generate import GenerateTokenRequest
+from src.app.api.validators import ChatModel
+from src.app.api.validators.generate import GenerateTokenRequest
 
 
 def base_chat_payload(**overrides):
