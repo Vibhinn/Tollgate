@@ -94,7 +94,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
     async def _process(self, stream: str, entry_id: str, data: StreamPayload):
         helper = self._helper_registry.get(stream)
         if not helper:
-            await self.redis_client.xack(stream, GROUP_NAME, entry_id)
+            await self._handle_failure(stream, entry_id, data)
             return
 
         try:
@@ -104,7 +104,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             await self._handle_failure(stream, entry_id, data)
 
 
-    async def _handle_failure(self, stream: str, entry_id: str, data: dict):
+    async def _handle_failure(self, stream: str, entry_id: str, data: StreamPayload):
         pending = await self.redis_client.xpending_range(
             name=stream, groupname=GROUP_NAME, min=entry_id, max=entry_id, count=1
         )
