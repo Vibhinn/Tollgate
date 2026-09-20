@@ -1,6 +1,7 @@
 Metadata-Version: 2.4
 Name: tollgate
 Version: 0.1.0
+Requires-Python: >=3.12
 Requires-Dist: click
 Requires-Dist: rich
 Requires-Dist: cryptography
@@ -24,3 +25,4 @@ Requires-Dist: pytest-asyncio>=0.24; extra == "test"
 Requires-Dist: pytest-cov>=5.0; extra == "test"
 Requires-Dist: pytest-mock>=3.14; extra == "test"
 Requires-Dist: httpx; extra == "test"
+Requires-Dist: fakeredis>=2.38; extra == "test"

@@ -9,5 +9,5 @@ class LLMRepositoryInterface(ABC):
     def __init__(self, llm_connection_object):
         ...
     @abstractmethod
-    async def invoke(self, message: str, model_name: str) -> "LLMInvocationResult":
+    async def invoke(self, message: str, model_name: str, max_tokens: int) -> "LLMInvocationResult":
         ...

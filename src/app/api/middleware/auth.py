@@ -17,9 +17,7 @@ class AuthenticationMiddleware(BaseMiddleware):
 
         @self.app.middleware("http")
         async def check_api_token(request: Request, call_next):
-            print("Request URL - ", request.url.path)
             if request.url.path in self.exempt_paths:
-                print("Calling - ", call_next)
                 return await call_next(request)
 
             auth_header: str | None = request.headers.get("Authorization")

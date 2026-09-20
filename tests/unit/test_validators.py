@@ -9,6 +9,7 @@ def base_chat_payload(**overrides):
     payload = {
         "model": "gpt-4o",
         "messages": [{"role": "user", "content": "hi"}],
+        "max_tokens": 4096,
     }
     payload.update(overrides)
     return payload

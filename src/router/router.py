@@ -20,7 +20,7 @@ class RouterRepository:
         self.router_adapter = router_adapter
         self.config = config
 
-    async def invoke_model(self, model_name: str, messages: list[Message]) -> str:
+    async def invoke_model(self, model_name: str, messages: list[Message], max_tokens: int) -> str:
         model_entry = self.routing_table.get(model_name)
         if not model_entry:
             raise ModelSemanticNotFound(f"Sorry, no such model found: {model_name}")
@@ -32,7 +32,7 @@ class RouterRepository:
             raise ModelSemanticNotFound("Sorry, the provider is not supported by Tollgate at this moment. Please retry with a new one")
 
         start: float = time.monotonic()
-        model_response = await repository.invoke(messages[-1].content, model_name)
+        model_response = await repository.invoke(messages[-1].content, model_name, max_tokens)
         latency_ms: float = (time.monotonic() - start)*1000
 
         analytics_object = AnalyticsJobData(

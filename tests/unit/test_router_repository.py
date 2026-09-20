@@ -35,10 +35,10 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
     _, llm_repo = llm_repo_factory
     messages = [Message(role="user", content="hello there")]
 
-    result = await router_repository.invoke_model("gpt-4o", messages)
+    result = await router_repository.invoke_model("gpt-4o", messages, 4096)
 
     assert result == "the answer"
-    llm_repo.invoke.assert_awaited_once_with("hello there", "gpt-4o")
+    llm_repo.invoke.assert_awaited_once_with("hello there", "gpt-4o", 4096)
 
     router_adapter.add_job_to_queue.assert_awaited_once()
     call_args, call_kwargs = router_adapter.add_job_to_queue.await_args
@@ -54,7 +54,7 @@ async def test_invoke_model_returns_empty_string_when_provider_not_configured(ro
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(ModelSemanticNotFound):
-        await router_repository.invoke_model("claude-sonnet-4-6", messages)
+        await router_repository.invoke_model("claude-sonnet-4-6", messages, 4096)
 
     router_adapter.add_job_to_queue.assert_not_awaited()
 
@@ -67,7 +67,7 @@ async def test_invoke_model_raises_cleanly_when_model_is_not_in_routing_table(ro
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(ModelSemanticNotFound):
-        await router_repository.invoke_model("this-model-does-not-exist", messages)
+        await router_repository.invoke_model("this-model-does-not-exist", messages, 4096)
 
     router_adapter.add_job_to_queue.assert_not_awaited()
 

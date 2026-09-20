@@ -1,5 +1,7 @@
 from typing import override
 
+from google.genai import types
+
 from src.app.ports import LLMRepositoryInterface
 from src.utils.types import LLMProvider, LLMInvocationResult
 
@@ -11,10 +13,11 @@ class GeminiRepository(LLMRepositoryInterface):
         self.gemini_client = LLMConnection.get_connection(LLMProvider.GEMINI)
 
     @override
-    async def invoke(self, message: str, model_name: str) -> LLMInvocationResult:
+    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
         response = await self.gemini_client.aio.models.generate_content(
             model=model_name,
             contents=message,
+            config=types.GenerateContentConfig(max_output_tokens=max_tokens),
         )
         return LLMInvocationResult(
             content=response.text,

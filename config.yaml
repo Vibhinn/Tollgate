@@ -2,7 +2,7 @@ models:
   openai:
     api_key: NOT_CONFIGURED
   anthropic:
-    api_key: gAAAAABqWzq6Ch4Eps4FwY4jisCNW1cGAvvvmxANaUKQ-b53GvVu3-kVpye0MMmnikPeCtMHktkkboy6lAhW8jZzjgPGitP75-XKTQFholjPYoqz2zGzjlfu_DF_gz8LQcrA5sGX_3cGj30HHrCpqwjexdi3gpEhFdgn5I05Fd87If-8f-4R1V_Xa5GVvSdka4IfrDsykaErsfoZiV7HRyl-hAG019GmfA==
+    api_key: gAAAAABqr_92TJQ3scltMzLADyom65k-Dp2NrxeRdkZHDsIhRQmKyIGR9cREyCaQk_CCKJfok9gzkfhrEXEixbtLgxGloMQpFJL5znutaO-gp7levdLQ83emqpe7nC07Re-qShH84_cf4TjR3R-JK_kT4viCYgEgJVmRM3BQsfO_xegyll-HhyBpBl8cYkT8CTMvs-PEims93LyharMK4BnwCznmcEct0w==
   gemini:
     api_key: NOT_CONFIGURED
 embedding:
@@ -12,8 +12,8 @@ rate_limiter:
   refill_rate: '100'
   time_interval: '1.0'
 gateway:
-  default_model: claude-sonnet-4-6
+  default_model: claude-opus-4-6
   default_temperature: '0.7'
 admin:
-  username: gAAAAABqWzq0ZuolfIXp3sv5EVKviJouF_ZUfgRlNoSwjYoTr2mwIi-cdpTGwHqnMkz2wMLktIfF4PANnIw7rkQUy3yw0eAj2A==
-  password_hash: s/TD1HuGAbptmjmfB8HsUrxisO6JMz/HWwu892qpLonaoocmJs3HAL4wra2UEhp8
+  username: gAAAAABqr_9wTlLLIEH71uy3aXKlYccOHWdeJBXSCPPGsqwpiMUFdisYj-w514iFtq3BzsuccuqEonJFsFe9jYzdhg6Yn0-OhA==
+  password_hash: OUGbiiXh8tcJ6msQ9TxC/4KpFMpoasf/tLD2LRshpqVWY+xeTstHVS4uClhjClOd

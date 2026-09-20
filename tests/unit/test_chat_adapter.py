@@ -87,7 +87,7 @@ async def test_query_llm_routes_policy_models_through_router(build_adapter, samp
 
     adapter, _ = build_adapter(router_manager=router_manager)
 
-    result = await adapter.query_llm(policy, sample_messages)
+    result = await adapter.query_llm(policy, sample_messages, 4096)
 
     assert result == "the answer"
     router_manager.get_best_model.assert_awaited_once()
@@ -99,7 +99,7 @@ async def test_query_llm_routes_policy_models_through_router(build_adapter, samp
         assert call_kwargs["user_message"] is None
 
     router_manager.invoke_model.assert_awaited_once_with(
-        model_name="claude-haiku-4-5", messages=sample_messages
+        model_name="claude-haiku-4-5", messages=sample_messages, max_tokens=4096
     )
 
 
@@ -108,7 +108,7 @@ async def test_query_llm_rejects_literal_model_names(build_adapter, sample_messa
     policy keywords even though ChatModel's validator (and the README) also
     allow literal model names like "gpt-4o"."""
     adapter, _ = build_adapter()
-    await adapter.query_llm("gpt-4o", sample_messages)
+    await adapter.query_llm("gpt-4o", sample_messages, 4096)
 
 
 async def test_add_job_to_queue_delegates_to_job_manager(build_adapter):

@@ -14,6 +14,7 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
     user_message: str = user_requirement.messages[-1].content
     requested_model: str = user_requirement.model
     cache_match_confidence: float = user_requirement.cache_match_score
+    max_tokens: int = user_requirement.max_tokens
 
     search_result = await chat_adapter.check_cache(user_message, cache_match_confidence)
     if search_result:
@@ -25,7 +26,7 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
             }
         )
 
-    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages)
+    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages, max_tokens=max_tokens)
 
     if user_requirement.cache_type:
         caching_timeout_header = request.headers.get("X-Cache-TTL")

@@ -25,11 +25,12 @@ def openai_client(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(openai_client):
     repo = OpenAIRepository()
 
-    result = await repo.invoke("hello", "gpt-4o")
+    result = await repo.invoke("hello", "gpt-4o", 4096)
 
     openai_client.chat.completions.create.assert_awaited_once_with(
         model="gpt-4o",
         messages=[{"role": "user", "content": "hello"}],
+        max_tokens=4096,
     )
     assert result.content == "hi there"
     assert result.input_tokens == 12

@@ -25,11 +25,12 @@ def anthropic_client(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(anthropic_client):
     repo = AnthropicRepository()
 
-    result = await repo.invoke("hello", "claude-sonnet-4-6")
+    result = await repo.invoke("hello", "claude-sonnet-4-6", 4096)
 
     anthropic_client.messages.create.assert_awaited_once_with(
         model="claude-sonnet-4-6",
         messages=[{"role": "user", "content": "hello"}],
+        max_tokens=4096,
     )
     assert result.content == "hi there"
     assert result.input_tokens == 12

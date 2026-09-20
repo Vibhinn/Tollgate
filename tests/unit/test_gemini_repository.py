@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from google.genai import types
 
 from src.llm.connection import LLMConnection
 from src.llm.repository.gemini_repository import GeminiRepository
@@ -28,11 +29,12 @@ def gemini_client(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(gemini_client):
     repo = GeminiRepository()
 
-    result = await repo.invoke("hello", "gemini-2.0-flash")
+    result = await repo.invoke("hello", "gemini-2.0-flash", 4096)
 
     gemini_client.aio.models.generate_content.assert_awaited_once_with(
         model="gemini-2.0-flash",
         contents="hello",
+        config=types.GenerateContentConfig(max_output_tokens=4096),
     )
     assert result.content == "hi there"
     assert result.input_tokens == 12

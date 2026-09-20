@@ -30,15 +30,15 @@ class ChatAdapter:
             db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding, score_threshold)
             return db_result
 
-    async def query_llm(self, model_name: str, messages: list[Message]) -> str:
+    async def query_llm(self, model_name: str, messages: list[Message], max_tokens: int) -> str:
         if model_name in {"fast", "cheap", "smart"}:
             recommended_model = await self.router_repo.get_best_model(
                 model_name,
                 user_message=messages[-1] if model_name == "smart" else None
             )
-            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages)
+            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages, max_tokens=max_tokens)
         else:
-            return await self.router_repo.invoke_model(model_name=model_name, messages=messages)
+            return await self.router_repo.invoke_model(model_name=model_name, messages=messages, max_tokens=max_tokens)
 
     async def add_job_to_queue(self, collection_name: REDIS_STREAM_NAMES, data: dict):
         await self.job_queue_manager.create_job(collection_name, data)

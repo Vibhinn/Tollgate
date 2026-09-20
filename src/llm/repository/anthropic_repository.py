@@ -6,7 +6,7 @@ class AnthropicRepository(LLMRepositoryInterface):
     def __init__(self):
         self.anthropic_client = LLMConnection.get_connection(LLMProvider.ANTHROPIC)
 
-    async def invoke(self, message: str, model_name: str) -> LLMInvocationResult:
+    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
         response = await self.anthropic_client.messages.create(
             model=model_name,
             messages=[
@@ -15,6 +15,7 @@ class AnthropicRepository(LLMRepositoryInterface):
                     "content": message,
                 }
             ],
+            max_tokens=max_tokens
         )
 
         return LLMInvocationResult(

@@ -32,6 +32,7 @@ def chat_body(**overrides):
     body = {
         "model": "cheap",
         "messages": [{"role": "user", "content": "hello there"}],
+        "max_tokens": 4096,
     }
     body.update(overrides)
     return body
