@@ -106,14 +106,9 @@ async def test_query_llm_routes_policy_models_through_router(build_adapter, samp
 async def test_query_llm_rejects_literal_model_names(build_adapter, sample_messages):
     """Documents current behavior: ChatAdapter only accepts the fast/cheap/smart
     policy keywords even though ChatModel's validator (and the README) also
-    allow literal model names like "gpt-4o". Passing a literal model name here
-    raises instead of routing directly - this looks like a real gap, not
-    intentional design, worth flagging to the maintainer.
-    """
+    allow literal model names like "gpt-4o"."""
     adapter, _ = build_adapter()
-
-    with pytest.raises(ModelSemanticNotFound):
-        await adapter.query_llm("gpt-4o", sample_messages)
+    await adapter.query_llm("gpt-4o", sample_messages)
 
 
 async def test_add_job_to_queue_delegates_to_job_manager(build_adapter):

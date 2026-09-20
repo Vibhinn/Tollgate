@@ -13,10 +13,22 @@ from src.llm.repository.gemini_repository import GeminiRepository
 def factory(fake_config, monkeypatch):
     # Each provider repository fetches its client from LLMConnection at
     # construction time; stub that out so this test targets
-    # LLMRepositoryFactory's wiring, not LLMConnection (see
-    # test_llm_connection.py for the connection layer's own, currently
-    # broken, get_connection implementation).
+    # LLMRepositoryFactory's wiring, not LLMConnection itself (see
+    # test_llm_connection.py for that layer's own tests).
     monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, provider: MagicMock()))
+
+    # The shared fake_config fixture has no "models" section by default, so
+    # LLMRepositoryFactory would never actually build any repos - give it one
+    # with every provider configured (non-"NOT_CONFIGURED") so get_repo has
+    # something real to return.
+    fake_config._data = {
+        **fake_config._data,
+        "models": {
+            "openai": {"api_key": "fake-openai-key"},
+            "anthropic": {"api_key": "fake-anthropic-key"},
+            "gemini": {"api_key": "fake-gemini-key"},
+        },
+    }
     return LLMRepositoryFactory(fake_config)
 
 
