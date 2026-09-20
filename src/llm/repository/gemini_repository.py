@@ -1,12 +1,9 @@
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from src.app.ports import LLMRepositoryInterface
-from src.utils.types import LLMProvider
+from src.utils.types import LLMProvider, LLMInvocationResult
 
 from ..connection import LLMConnection
-
-if TYPE_CHECKING:
-    from google.genai.types import GenerateContentResponse
 
 class GeminiRepository(LLMRepositoryInterface):
     @override
@@ -14,9 +11,13 @@ class GeminiRepository(LLMRepositoryInterface):
         self.gemini_client = LLMConnection.get_connection(LLMProvider.GEMINI)
 
     @override
-    async def invoke(self, message: str, model_name: str) -> "GenerateContentResponse":
+    async def invoke(self, message: str, model_name: str) -> LLMInvocationResult:
         response = await self.gemini_client.aio.models.generate_content(
             model=model_name,
             contents=message,
         )
-        return response
+        return LLMInvocationResult(
+            content=response.text,
+            input_tokens=response.usage_metadata.prompt_token_count,
+            output_tokens=response.usage_metadata.candidates_token_count,
+        )

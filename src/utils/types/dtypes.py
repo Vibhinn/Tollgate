@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pydantic import BaseModel
 from typing import TypedDict, Literal
 from .params import CACHE_TYPE
@@ -5,6 +6,12 @@ from .params import CACHE_TYPE
 class Message(BaseModel):
     role: Literal["system", "developer", "user", "assistant"]
     content: str
+
+@dataclass
+class LLMInvocationResult:
+    content: str
+    input_tokens: int
+    output_tokens: int
 
 class CacheJobData(TypedDict):
     cache_type: CACHE_TYPE

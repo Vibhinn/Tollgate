@@ -75,7 +75,8 @@ class Builder:
         container.register(RouterAdapter, lambda: RouterAdapter(
                                                                         container.resolve(RedisStreamRepository),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.RANKING),
-                                                                        container.resolve(RoutingIntelligenceLayer)))
+                                                                        container.resolve(RoutingIntelligenceLayer),
+                                                                        container.resolve(LLMRepositoryFactory)))
 
     @staticmethod
     def __setup_job_manager():

@@ -37,14 +37,14 @@ class RouterRepository:
 
         analytics_object = AnalyticsJobData(
             model_name=model_name,
-            input_tokens=model_response.usage.input_tokens,
-            output_tokens=model_response.usage.output_tokens,
+            input_tokens=model_response.input_tokens,
+            output_tokens=model_response.output_tokens,
             latency_ms=latency_ms,
             timestamp=datetime.now().isoformat()
         )
 
         await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore
-        return model_response.content[0].text
+        return model_response.content
 
     async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:
         if requirement in {"fast", "cheap"}:

@@ -1,18 +1,14 @@
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 from src.app.exceptions import ModelSemanticNotFound
 from src.router.router import RouterRepository
-from src.utils.types import Message
+from src.utils.types import LLMInvocationResult, Message
 
 
 def make_model_response(text="the answer", input_tokens=10, output_tokens=20):
-    return SimpleNamespace(
-        usage=SimpleNamespace(input_tokens=input_tokens, output_tokens=output_tokens),
-        content=[SimpleNamespace(text=text)],
-    )
+    return LLMInvocationResult(content=text, input_tokens=input_tokens, output_tokens=output_tokens)
 
 
 @pytest.fixture
