@@ -1,8 +1,9 @@
 import asyncio
 import json
+import logging
 import socket
 import uuid
-from typing import overload, Literal, TYPE_CHECKING, Iterable
+from typing import overload, Literal, TYPE_CHECKING
 
 from src.cache import CacheConnection
 from src.app.ports import JobQueueRepositoryInterface
@@ -11,6 +12,8 @@ from src.utils.types import CacheType, RedisStreamName
 if TYPE_CHECKING:
     from ..helpers.base import BaseHelper
     from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
+
+logger = logging.getLogger(__name__)
 
 GROUP_NAME: str = "tollgate-workers"
 MAX_DELIVERIES: int = 5
@@ -38,7 +41,8 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
                     name=stream, groupname=GROUP_NAME, id="0", mkstream=True
                 )
             except Exception as e:
-                raise e
+                if "BUSYGROUP" not in str(e):
+                    raise
 
 
     def start(self) -> None:
@@ -51,6 +55,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             return
         consumer_death_exception: BaseException | None = task.exception()
         if consumer_death_exception:
+            logger.error("Stream consumer died, restarting", exc_info=consumer_death_exception)
             self.start()
 
 
@@ -63,7 +68,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
     async def _reclaim_stale_entries(self):
         for stream in self._helper_registry.keys():
-            _, claimed, _ = self.redis_client.xautoclaim(
+            _, claimed, _ = await self.redis_client.xautoclaim(
                 name=stream,
                 groupname=GROUP_NAME,
                 consumername=self._consumer_name,
@@ -78,7 +83,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
     async def _read_new_entries(self):
         streams: dict = {stream: ">" for stream in self._helper_registry.keys()}
-        messages: Iterable = await self.redis_client.xreadgroup(
+        messages: list = await self.redis_client.xreadgroup(
             groupname=GROUP_NAME,
             consumername=self._consumer_name,
             streams=streams,
@@ -86,14 +91,15 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             block=1000
         )
 
-        for stream in streams:
-            for entry_id, data in stream:
+        for stream, entries in messages:
+            for entry_id, data in entries:
                 await self._process(stream, entry_id, data)
 
 
     async def _process(self, stream: str, entry_id: str, data: StreamPayload):
         helper = self._helper_registry.get(stream)
         if not helper:
+            logger.error("No helper registered for stream %s, entry %s", stream, entry_id)
             await self._handle_failure(stream, entry_id, data)
             return
 
@@ -101,6 +107,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             await helper.execute(data)
             await self.redis_client.xack(stream, GROUP_NAME, entry_id)
         except Exception as e:
+            logger.error("Failed processing %s entry %s", stream, entry_id, exc_info=e)
             await self._handle_failure(stream, entry_id, data)
 
 
@@ -111,6 +118,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
         deliveries = pending[0]["times_delivered"] if pending else 1
 
         if deliveries >= MAX_DELIVERIES:
+            logger.error("Dead-lettering %s entry %s after %d attempts", stream, entry_id, deliveries)
             await self.redis_client.xadd(f"{stream}:dead", data, maxlen=1000, approximate=True)
             await self.redis_client.xack(stream, GROUP_NAME, entry_id)
 
