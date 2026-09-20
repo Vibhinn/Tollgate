@@ -22,13 +22,16 @@ class ChatAdapter:
 
     async def check_cache(self, message: str, score_threshold: float) -> str:
         #exact cache search
-        answer = await self.kv_cache_repo.search(message)
-        if answer:
-            return answer
-        else:
-            embedding = await self.embedding_repo.create_vector_embeddings(message)
-            db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding, score_threshold)
-            return db_result
+        try:
+            answer = await self.kv_cache_repo.search(message)
+            if answer:
+                return answer
+            else:
+                embedding = await self.embedding_repo.create_vector_embeddings(message)
+                db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding, score_threshold)
+                return db_result
+        except Exception:
+            return ""
 
     async def query_llm(self, model_name: str, messages: list[Message], max_tokens: int) -> str:
         if model_name in {"fast", "cheap", "smart"}:
