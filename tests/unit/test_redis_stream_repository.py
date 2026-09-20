@@ -1,171 +1,232 @@
+"""Behavioral tests for RedisStreamRepository.
+
+These drive the class only through its public surface (register_helper,
+create_job, start) against fakeredis - a real Redis Streams implementation,
+not a mock - so they exercise the actual delivery/retry/crash-recovery
+guarantees instead of asserting which internal methods got called with
+which arguments. In particular, test_message_written_while_previous_entry_is_processing_is_not_lost
+reproduces the exact concurrency scenario that silently dropped messages
+under the old XREAD + "$" implementation; a mock-based test cannot catch
+a regression back to that bug, this one can.
+"""
 import asyncio
-from unittest.mock import AsyncMock
+import contextlib
+import json
 
 import pytest
+from fakeredis import FakeAsyncRedis
 
 from src.cache.connection import CacheConnection
-from src.jobs.repository.redis_stream_repository import (
-    RedisStreamRepository,
-    GROUP_NAME,
-    MAX_DELIVERIES,
-)
+from src.jobs.repository import redis_stream_repository as stream_module
+from src.jobs.repository.redis_stream_repository import RedisStreamRepository
+
+
+async def wait_until(condition, timeout=5.0, interval=0.01):
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        if condition():
+            return
+        await asyncio.sleep(interval)
+    raise AssertionError(f"condition not met within {timeout}s")
+
+
+def _yielding(fn):
+    """fakeredis resolves its async methods without ever truly suspending,
+    so a tight `while True: await ...` loop with no new data never hands
+    control back to the event loop - it livelocks the whole process instead
+    of cooperatively waiting, unlike a real network-backed Redis client.
+    This forces a genuine scheduler checkpoint on every stream call so the
+    background consumer task behaves the way it would against real Redis."""
+    async def wrapper(*args, **kwargs):
+        await asyncio.sleep(0)
+        return await fn(*args, **kwargs)
+    return wrapper
 
 
 @pytest.fixture
-def redis_conn(monkeypatch):
-    conn = AsyncMock()
-    monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: conn))
-    return conn
+def fake_redis():
+    redis = FakeAsyncRedis(decode_responses=True)
+    for method_name in ("xreadgroup", "xautoclaim", "xgroup_create", "xack", "xadd", "xpending_range"):
+        setattr(redis, method_name, _yielding(getattr(redis, method_name)))
+    return redis
 
 
 @pytest.fixture
-def repo(redis_conn):
-    return RedisStreamRepository()
+async def spawned(monkeypatch, fake_redis):
+    """Every RedisStreamRepository() created via the returned factory shares
+    one fake Redis instance, so tests can simulate a process restart by
+    spawning a second repository against the same backing store. Any
+    consumer task left running at teardown is cancelled and awaited."""
+    monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: fake_redis))
+    repos = []
+
+    def make_repo():
+        repo = RedisStreamRepository()
+        repos.append(repo)
+        return repo
+
+    yield make_repo
+
+    for repo in repos:
+        task = repo._task
+        if task and not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
 
-@pytest.fixture
-def helper():
-    h = AsyncMock()
-    h.execute = AsyncMock()
-    return h
+async def test_job_written_before_start_is_delivered_to_registered_helper(spawned):
+    repo = spawned()
+    delivered = []
+
+    class Helper:
+        async def execute(self, data):
+            delivered.append(json.loads(data["payload"]))
+
+    repo.register_helper("response_cache", Helper())
+    await repo.create_job("response_cache", {"cache_type": "exact", "user_message": "hi"})
+
+    repo.start()
+
+    await wait_until(lambda: delivered == [{"cache_type": "exact", "user_message": "hi"}])
 
 
-async def test_create_groups_creates_one_group_per_registered_stream(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    repo.register_helper("analytics", helper)
+async def test_message_written_while_previous_entry_is_processing_is_not_lost(spawned):
+    """Regression test for the original message-loss bug: a second job
+    written while the first is still mid-processing must still be delivered."""
+    repo = spawned()
+    delivered = []
+    started_processing_a = asyncio.Event()
+    release_a = asyncio.Event()
 
-    await repo._create_groups()
+    class Helper:
+        async def execute(self, data):
+            payload = json.loads(data["payload"])
+            if payload["id"] == "A":
+                started_processing_a.set()
+                await release_a.wait()
+            delivered.append(payload["id"])
 
-    assert redis_conn.xgroup_create.await_count == 2
-    redis_conn.xgroup_create.assert_any_await(name="response_cache", groupname=GROUP_NAME, id="0", mkstream=True)
-    redis_conn.xgroup_create.assert_any_await(name="analytics", groupname=GROUP_NAME, id="0", mkstream=True)
+    repo.register_helper("response_cache", Helper())
+    await repo.create_job("response_cache", {"id": "A"})
 
+    repo.start()
+    await asyncio.wait_for(started_processing_a.wait(), timeout=2.0)
 
-async def test_create_groups_tolerates_busygroup(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    redis_conn.xgroup_create.side_effect = Exception("BUSYGROUP Consumer Group name already exists")
+    # A second request arrives and writes its job while A is still being processed.
+    await repo.create_job("response_cache", {"id": "B"})
 
-    await repo._create_groups()  # should not raise
+    release_a.set()
 
-
-async def test_create_groups_reraises_other_errors(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    redis_conn.xgroup_create.side_effect = Exception("WRONGTYPE some other redis error")
-
-    with pytest.raises(Exception, match="WRONGTYPE"):
-        await repo._create_groups()
-
-
-async def test_process_acks_on_success(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-
-    await repo._process("response_cache", "1-0", {"payload": "{}"})
-
-    helper.execute.assert_awaited_once_with({"payload": "{}"})
-    redis_conn.xack.assert_awaited_once_with("response_cache", GROUP_NAME, "1-0")
+    await wait_until(lambda: set(delivered) == {"A", "B"})
 
 
-async def test_process_does_not_ack_on_helper_failure(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    helper.execute.side_effect = ValueError("boom")
-    redis_conn.xpending_range.return_value = [{"times_delivered": 1}]
+async def test_helper_that_fails_then_succeeds_eventually_completes(spawned, monkeypatch):
+    monkeypatch.setattr(stream_module, "CLAIM_IDLE_MS", 10)
+    repo = spawned()
+    attempts = []
 
-    await repo._process("response_cache", "1-0", {"payload": "{}"})
+    class Helper:
+        async def execute(self, data):
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise RuntimeError("transient failure")
 
-    redis_conn.xack.assert_not_awaited()
+    repo.register_helper("response_cache", Helper())
+    await repo.create_job("response_cache", {"id": "A"})
 
+    repo.start()
 
-async def test_process_handles_missing_helper_as_failure(repo, redis_conn):
-    redis_conn.xpending_range.return_value = [{"times_delivered": 1}]
-
-    await repo._process("unregistered_stream", "1-0", {"payload": "{}"})
-
-    redis_conn.xack.assert_not_awaited()
-    redis_conn.xadd.assert_not_awaited()
-
-
-async def test_handle_failure_dead_letters_after_max_deliveries(repo, redis_conn):
-    redis_conn.xpending_range.return_value = [{"times_delivered": MAX_DELIVERIES}]
-
-    await repo._handle_failure("response_cache", "1-0", {"payload": "{}"})
-
-    redis_conn.xadd.assert_awaited_once_with(
-        "response_cache:dead", {"payload": "{}"}, maxlen=1000, approximate=True
-    )
-    redis_conn.xack.assert_awaited_once_with("response_cache", GROUP_NAME, "1-0")
+    await wait_until(lambda: len(attempts) >= 3, timeout=10.0)
+    await asyncio.sleep(0.3)  # let any further (unwanted) redelivery attempt land
+    assert len(attempts) == 3
 
 
-async def test_handle_failure_leaves_entry_pending_below_max_deliveries(repo, redis_conn):
-    redis_conn.xpending_range.return_value = [{"times_delivered": MAX_DELIVERIES - 1}]
+async def test_helper_that_always_fails_ends_up_dead_lettered_after_max_retries(spawned, monkeypatch, fake_redis):
+    monkeypatch.setattr(stream_module, "CLAIM_IDLE_MS", 10)
+    repo = spawned()
+    attempts = []
 
-    await repo._handle_failure("response_cache", "1-0", {"payload": "{}"})
+    class Helper:
+        async def execute(self, data):
+            attempts.append(1)
+            raise RuntimeError("permanent failure")
 
-    redis_conn.xadd.assert_not_awaited()
-    redis_conn.xack.assert_not_awaited()
+    repo.register_helper("response_cache", Helper())
+    await repo.create_job("response_cache", {"id": "A"})
 
+    repo.start()
 
-async def test_read_new_entries_processes_actual_xreadgroup_result(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    redis_conn.xreadgroup.return_value = [
-        ("response_cache", [("1-0", {"payload": "a"}), ("2-0", {"payload": "b"})]),
-    ]
+    await wait_until(lambda: len(attempts) >= stream_module.MAX_DELIVERIES, timeout=15.0)
+    await asyncio.sleep(0.3)
+    assert len(attempts) == stream_module.MAX_DELIVERIES  # gave up, stopped retrying
 
-    await repo._read_new_entries()
-
-    assert helper.execute.await_count == 2
-    helper.execute.assert_any_await({"payload": "a"})
-    helper.execute.assert_any_await({"payload": "b"})
-    assert redis_conn.xack.await_count == 2
-
-
-async def test_reclaim_stale_entries_awaits_xautoclaim_and_processes_claimed(repo, redis_conn, helper):
-    repo.register_helper("response_cache", helper)
-    redis_conn.xautoclaim.return_value = ("0-0", [("1-0", {"payload": "a"})], [])
-
-    await repo._reclaim_stale_entries()
-
-    redis_conn.xautoclaim.assert_awaited_once()
-    helper.execute.assert_awaited_once_with({"payload": "a"})
-    redis_conn.xack.assert_awaited_once_with("response_cache", GROUP_NAME, "1-0")
+    dead_entries = await fake_redis.xrange("response_cache:dead")
+    assert len(dead_entries) == 1
+    _, dead_payload = dead_entries[0]
+    assert json.loads(dead_payload["payload"]) == {"id": "A"}
 
 
-async def test_on_task_done_restarts_after_exception(repo, monkeypatch):
-    restarted = AsyncMock()
-    monkeypatch.setattr(repo, "start", restarted)
+async def test_consumer_crash_before_ack_does_not_lose_the_job(spawned, monkeypatch):
+    monkeypatch.setattr(stream_module, "CLAIM_IDLE_MS", 10)
+    repo1 = spawned()
+    started = asyncio.Event()
 
-    async def _boom():
-        raise RuntimeError("consumer crashed")
+    class HangingHelper:
+        async def execute(self, data):
+            started.set()
+            await asyncio.sleep(30)  # never returns - simulates a worker that dies mid-task
 
-    task = asyncio.create_task(_boom())
-    with pytest.raises(RuntimeError):
-        await task
+    repo1.register_helper("response_cache", HangingHelper())
+    await repo1.create_job("response_cache", {"id": "A"})
 
-    repo._on_task_done(task)
+    repo1.start()
+    await asyncio.wait_for(started.wait(), timeout=2.0)
 
-    restarted.assert_called_once()
+    # Simulate the process dying before the entry is acked, by killing the
+    # task directly - there's no public "crash" API, this is fault injection
+    # from outside, not a call into RedisStreamRepository's internals.
+    repo1._task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await repo1._task
+
+    # A fresh consumer wired to the same Redis should still recover the job.
+    repo2 = spawned()
+    delivered = []
+
+    class WorkingHelper:
+        async def execute(self, data):
+            delivered.append(json.loads(data["payload"]))
+
+    repo2.register_helper("response_cache", WorkingHelper())
+    repo2.start()
+
+    await wait_until(lambda: delivered == [{"id": "A"}])
 
 
-async def test_on_task_done_does_nothing_when_cancelled(repo, monkeypatch):
-    restarted = AsyncMock()
-    monkeypatch.setattr(repo, "start", restarted)
+async def test_consumer_recovers_automatically_from_an_unexpected_error(spawned, fake_redis):
+    repo = spawned()
+    delivered = []
 
-    async def _wait_forever():
-        await asyncio.sleep(10)
+    class Helper:
+        async def execute(self, data):
+            delivered.append(json.loads(data["payload"]))
 
-    task = asyncio.create_task(_wait_forever())
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
+    repo.register_helper("response_cache", Helper())
+    await repo.create_job("response_cache", {"id": "A"})
 
-    repo._on_task_done(task)
+    real_xreadgroup = fake_redis.xreadgroup
+    call_count = {"n": 0}
 
-    restarted.assert_not_called()
+    async def flaky_xreadgroup(*args, **kwargs):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            raise ConnectionError("simulated redis blip")
+        return await real_xreadgroup(*args, **kwargs)
 
+    fake_redis.xreadgroup = flaky_xreadgroup
 
-async def test_create_job_writes_to_stream_with_approximate_trim(repo, redis_conn):
-    await repo.create_job("response_cache", {"cache_type": "exact"})
+    repo.start()
 
-    await_args = redis_conn.xadd.await_args
-    assert await_args.args[0] == "response_cache"
-    assert await_args.kwargs["maxlen"] == 1000
-    assert await_args.kwargs["approximate"] is True
+    await wait_until(lambda: delivered == [{"id": "A"}])
