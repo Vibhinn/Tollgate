@@ -1,5 +1,5 @@
 import redis.asyncio as redis
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from typing import overload, Literal, TYPE_CHECKING
 
 from src.utils.types import CacheType
@@ -9,12 +9,12 @@ if TYPE_CHECKING:
 
 class CacheConnection:
     _redis_conn: redis.Redis = None
-    _vector_db_conn: QdrantClient = None
+    _vector_db_conn: AsyncQdrantClient = None
 
     @classmethod
     def initialize(cls):
         cls._redis_conn = redis.Redis(host="localhost", port=6379, decode_responses=True)
-        cls._vector_db_conn = QdrantClient(host="localhost", port=6333)
+        cls._vector_db_conn = AsyncQdrantClient(host="localhost", port=6333)
 
     @overload
     @classmethod
@@ -22,7 +22,7 @@ class CacheConnection:
 
     @overload
     @classmethod
-    def get_connection(cls, connection_type: Literal[CacheType.SEMANTIC]) -> QdrantClient: ...
+    def get_connection(cls, connection_type: Literal[CacheType.SEMANTIC]) -> AsyncQdrantClient: ...
 
     @classmethod
     def get_connection(cls, connection_type: CACHE_TYPE):

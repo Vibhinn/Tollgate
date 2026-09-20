@@ -1,9 +1,9 @@
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
+from model2vec import StaticModel
 
-from src.cache import CacheConnection
-from src.utils.types import LLMProvider, CacheType
+from src.utils.types import LLMProvider, ConfigurationSection, ConfigurationOption
 
 providers = {
     LLMProvider.OPENAI: lambda key: AsyncOpenAI(api_key=key),
@@ -12,5 +12,8 @@ providers = {
 }
 
 embedding_model = {
-    LLMProvider.EMBEDDING: lambda: CacheConnection.get_connection(CacheType.SEMANTIC)
+    LLMProvider.EMBEDDING: lambda config: StaticModel.from_pretrained(
+        config.get_config(ConfigurationSection.EMBEDDING, ConfigurationOption.MODEL_NAME),
+        force_download=False,
+    )
 }

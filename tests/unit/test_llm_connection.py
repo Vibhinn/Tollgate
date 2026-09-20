@@ -1,22 +1,17 @@
-"""Regression tests for src.llm.connection.LLMConnection.
+"""Regression tests for src.llm.connection.LLMConnection."""
+import importlib
+from unittest.mock import MagicMock
 
-KNOWN BUG (confirmed, not speculative): `initialize()` stores each configured
-provider's client in `cls._connections[provider]`, but `get_connection()`
-reads from `cls._openai_conn` / `cls._anthropic_conn` / `cls._gemini_conn` /
-`cls._model2vec_conn` - attributes that are never assigned anywhere in the
-class. As a result, `get_connection()` always raises AttributeError, for
-every provider, regardless of configuration. This means every real LLM call
-in the app is currently broken end-to-end (OpenAIRepository, AnthropicRepository,
-GeminiRepository, and Model2VecRepository all call `get_connection()` in
-their constructors). These tests document the current behavior so the
-maintainer notices immediately once the underlying bug is fixed - at that
-point `test_get_connection_currently_raises_due_to_attribute_mismatch`
-should start failing and can be replaced with a real "returns the
-initialized connection" assertion.
-"""
 import pytest
 
 from src.llm.connection import LLMConnection
+from src.utils.types import LLMProvider
+
+# src/llm/__init__.py does `from .providers import providers`, which shadows
+# the `providers` submodule with the `providers` dict on the package's own
+# namespace - `import src.llm.providers` would resolve to that dict instead
+# of the submodule, so fetch the real submodule directly via importlib.
+providers_module = importlib.import_module("src.llm.providers")
 
 
 @pytest.fixture(autouse=True)
@@ -27,21 +22,48 @@ def reset_connections():
     LLMConnection._connections = original
 
 
-def test_get_connection_currently_raises_due_to_attribute_mismatch():
-    LLMConnection._connections["openai"] = object()
+def test_get_connection_returns_the_initialized_connection():
+    LLMConnection._connections["openai"] = "some-connection"
 
-    with pytest.raises(AttributeError, match="_openai_conn"):
-        LLMConnection.get_connection("openai")
+    assert LLMConnection.get_connection("openai") == "some-connection"
 
 
-def test_initialize_skips_unconfigured_providers(fake_config):
+def test_get_connection_raises_for_unknown_provider():
+    with pytest.raises(ValueError, match="unknown-provider"):
+        LLMConnection.get_connection("unknown-provider")
+
+
+def test_initialize_skips_unconfigured_providers(fake_config, monkeypatch):
+    monkeypatch.setattr(providers_module.StaticModel, "from_pretrained", MagicMock())
     config_data = {
         "models": {
             "openai": {"api_key": "NOT_CONFIGURED"},
-        }
+        },
+        "embedding": {"model_name": "irrelevant-for-this-test"},
     }
     fake_config._data = config_data
 
     LLMConnection.initialize(fake_config)
 
     assert "openai" not in LLMConnection._connections
+
+
+def test_initialize_builds_embedding_model_eagerly_from_configured_model_name(fake_config, monkeypatch):
+    """Regression test: the embedding connection used to be wired to the
+    Qdrant client instead of a real embedding model. This exercises the real
+    initialize() path end-to-end (not just the providers.py lambda in
+    isolation) to prove the configured model name actually reaches
+    StaticModel.from_pretrained, and that it happens once, eagerly, during
+    initialize() rather than lazily on a request."""
+    fake_config._data = {
+        "models": {},
+        "embedding": {"model_name": "some/configured-model"},
+    }
+    fake_static_model = object()
+    from_pretrained = MagicMock(return_value=fake_static_model)
+    monkeypatch.setattr(providers_module.StaticModel, "from_pretrained", from_pretrained)
+
+    LLMConnection.initialize(fake_config)
+
+    from_pretrained.assert_called_once_with("some/configured-model", force_download=False)
+    assert LLMConnection.get_connection(LLMProvider.EMBEDDING) is fake_static_model

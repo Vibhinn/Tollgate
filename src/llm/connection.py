@@ -29,7 +29,7 @@ class LLMConnection:
             factory = providers.get(provider)
             cls._connections[provider] = factory(configured_api_key)
 
-        cls._connections[LLMProvider.EMBEDDING] = embedding_model[LLMProvider.EMBEDDING]()
+        cls._connections[LLMProvider.EMBEDDING] = embedding_model[LLMProvider.EMBEDDING](config)
 
     @overload
     @classmethod

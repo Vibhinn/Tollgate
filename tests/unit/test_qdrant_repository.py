@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,7 +9,7 @@ from src.cache.repository.qdrant_repository import QdrantRepository
 
 @pytest.fixture
 def qdrant_client(monkeypatch):
-    client = MagicMock()
+    client = AsyncMock()
     monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: client))
     return client
 
@@ -27,7 +27,7 @@ async def test_save_upserts_point_with_embedding_and_payload(repo, qdrant_client
         model_response="hello!",
     )
 
-    qdrant_client.upsert.assert_called_once()
+    qdrant_client.upsert.assert_awaited_once()
     call_kwargs = qdrant_client.upsert.call_args.kwargs
     assert call_kwargs["collection_name"] == "semantic_cache"
     point = call_kwargs["points"][0]
@@ -41,7 +41,7 @@ async def test_search_returns_top_match_response(repo, qdrant_client, fake_embed
 
     result = await repo.search(collection="semantic_cache", embedding=fake_embedding, score_threshold=0.9)
 
-    qdrant_client.query_points.assert_called_once_with(
+    qdrant_client.query_points.assert_awaited_once_with(
         collection_name="semantic_cache",
         query=fake_embedding[0].tolist(),
         limit=1,

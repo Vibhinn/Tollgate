@@ -78,6 +78,8 @@ class Builder:
                                                                         container.resolve(RoutingIntelligenceLayer),
                                                                         container.resolve(LLMRepositoryFactory)))
 
+        container.register(BaseMigration, lambda: BaseMigration())
+
     @staticmethod
     def __setup_job_manager():
         repo_factory = container.resolve(ApplicationRepositoryFactory)
@@ -105,7 +107,6 @@ class Builder:
         CacheConnection.initialize()
         LLMConnection.initialize(self.config)
         JobQueueConnection.initialize()
-        BaseMigration.run_all()
 
 
 

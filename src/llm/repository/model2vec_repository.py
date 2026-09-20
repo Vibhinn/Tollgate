@@ -1,3 +1,4 @@
+import asyncio
 from typing import override, TYPE_CHECKING
 
 from src.app.ports import VectorEmbeddingRepositoryInterface
@@ -13,5 +14,5 @@ class Model2VecRepository(VectorEmbeddingRepositoryInterface):
 
     @override
     async def create_vector_embeddings(self, content: str) -> ndarray:
-        embedding = self.embedding_model.encode([content])
-        return embedding
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.embedding_model.encode, [content])

@@ -22,7 +22,7 @@ class QdrantRepository(VectorDBRepositoryInterface):
         user_message: str,
         model_response: str
     ):
-        self.client.upsert(
+        await self.client.upsert(
             collection_name=collection,
             points=[
                 PointStruct(
@@ -39,7 +39,7 @@ class QdrantRepository(VectorDBRepositoryInterface):
     @override
     async def search(self, collection: VECTOR_REPOSITORY_COLLECTIONS, embedding: ndarray, score_threshold: float = 0.9) -> dict:
         print("Embedding shape - ", embedding.shape)
-        results = self.client.query_points(
+        results = await self.client.query_points(
             collection_name=collection,
             query=embedding[0].tolist(),
             limit=1,
