@@ -21,7 +21,11 @@ class RouterRepository:
         self.config = config
 
     async def invoke_model(self, model_name: str, messages: list[Message]) -> str:
-        model_provider_name: str = self.routing_table.get(model_name).get("provider")
+        model_entry = self.routing_table.get(model_name)
+        if not model_entry:
+            raise ModelSemanticNotFound(f"Sorry, no such model found: {model_name}")
+
+        model_provider_name: str = model_entry.get("provider")
         repository = self.llm_repo_factory.get_repo(model_provider_name)
 
         if not repository:

@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from src.app.exceptions import ModelSemanticNotFound
 from src.router.router import RouterRepository
 from src.utils.types import Message
 
@@ -56,9 +57,22 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
 async def test_invoke_model_returns_empty_string_when_provider_not_configured(router_repository, router_adapter):
     messages = [Message(role="user", content="hello")]
 
-    result = await router_repository.invoke_model("claude-sonnet-4-6", messages)
+    with pytest.raises(ModelSemanticNotFound):
+        await router_repository.invoke_model("claude-sonnet-4-6", messages)
 
-    assert result == ""
+    router_adapter.add_job_to_queue.assert_not_awaited()
+
+
+async def test_invoke_model_raises_cleanly_when_model_is_not_in_routing_table(router_repository, router_adapter):
+    """Regression test: model_name resolved by get_best_model (e.g. an empty
+    ranking sorted set on a cold start, or a classifier label with no routing
+    entry) used to crash with AttributeError instead of a handled 404-style
+    exception."""
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(ModelSemanticNotFound):
+        await router_repository.invoke_model("this-model-does-not-exist", messages)
+
     router_adapter.add_job_to_queue.assert_not_awaited()
 
 
