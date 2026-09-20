@@ -4,6 +4,7 @@ import pytest
 
 from src.app.adapters.chat_adapter import ChatAdapter
 from src.app.exceptions import ModelSemanticNotFound
+from src.utils.types import VectorRepositoryCollection
 
 
 class FakeRepoManager:
@@ -40,7 +41,7 @@ async def test_check_cache_returns_exact_hit_without_querying_vector_db(build_ad
 
     adapter, _ = build_adapter(exact_cache=exact_cache, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello")
+    result = await adapter.check_cache("hello", 0.9)
 
     assert result == "cached exact answer"
     exact_cache.search.assert_awaited_once_with("hello")
@@ -57,10 +58,12 @@ async def test_check_cache_falls_back_to_semantic_search_on_exact_miss(build_ada
 
     adapter, _ = build_adapter(exact_cache=exact_cache, embedding=embedding_repo, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello")
+    result = await adapter.check_cache("hello", 0.9)
 
     embedding_repo.create_vector_embeddings.assert_awaited_once_with("hello")
-    vector_cache.search.assert_awaited_once_with("embedding-vector")
+    vector_cache.search.assert_awaited_once_with(
+        VectorRepositoryCollection.SEMANTIC_CACHE, "embedding-vector", 0.9
+    )
     assert result == "semantic answer"
 
 
@@ -72,7 +75,7 @@ async def test_check_cache_returns_empty_when_both_layers_miss(build_adapter):
 
     adapter, _ = build_adapter(exact_cache=exact_cache, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello")
+    result = await adapter.check_cache("hello", 0.9)
     assert result == {}
 
 

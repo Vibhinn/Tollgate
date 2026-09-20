@@ -13,8 +13,9 @@ chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 async def chat_complete(request: Request, user_requirement: ChatModel, chat_adapter: ChatAdapter = Depends(get_chat_adapter)):
     user_message: str = user_requirement.messages[-1].content
     requested_model: str = user_requirement.model
+    cache_match_confidence: float = user_requirement.cache_match_score
 
-    search_result = await chat_adapter.check_cache(user_message)
+    search_result = await chat_adapter.check_cache(user_message, cache_match_confidence)
     if search_result:
         return JSONResponse(
             status_code=200,

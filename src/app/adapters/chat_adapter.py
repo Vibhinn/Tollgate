@@ -20,14 +20,14 @@ class ChatAdapter:
         self.router_repo = router_manager
         self.job_queue_manager = job_manager
 
-    async def check_cache(self, message: str) -> str:
+    async def check_cache(self, message: str, score_threshold: float) -> str:
         #exact cache search
         answer = await self.kv_cache_repo.search(message)
         if answer:
             return answer
         else:
             embedding = await self.embedding_repo.create_vector_embeddings(message)
-            db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding)
+            db_result = await self.vector_db_repo.search(VectorRepositoryCollection.SEMANTIC_CACHE, embedding, score_threshold)
             return db_result
 
     async def query_llm(self, model_name: str, messages: list[Message]) -> str:
