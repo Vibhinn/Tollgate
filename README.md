@@ -187,14 +187,14 @@ DONE ─────────────────────────
 | 9  | Ports & adapters architecture with custom DI container | ✅ Done |
 | 10 | Add a dedicated CLI to setup the proxy on end user | ✅ Done |
 | 11 | Analytics dashboard endpoint (data collected, API stub) | 🔧 In Progress |
-| 12 | Gemini provider fully wired (config exists, adapter pending) | 🔧 In Progress |
+| 12 | Gemini provider fully wired (config exists, adapter pending) | ✅ Done |
 | 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |
 | 14 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
 | 15 | Streaming responses (SSE / chunked transfer) | 📋 Planned |
 | 16 | Per-token budget enforcement and cost caps | 📋 Planned |
 | 17 | Fallback chains (primary → fallback on error/timeout) | 📋 Planned |
 | 18 | Multi-tenant routing with isolated rate limits | 📋 Planned |
-| 19 | OpenAI-compatible `/v1/chat/completions` drop-in API | 📋 Planned |
+| 19 | OpenAI-compatible `/v1/chat/completions` drop-in API | ✅ Done |
 
 ---
 
