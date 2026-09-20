@@ -43,6 +43,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
 
     def start(self) -> None:
+        #it has started in the main app lifespan event. The IDE does not reference it, hence the confusion
         self._task = asyncio.create_task(self._run())
         self._task.add_done_callback(self._on_task_done)
 
