@@ -18,7 +18,7 @@ class TokenBucket:
         if elapsed >= self.time_interval:
             num_refills = int(elapsed // self.time_interval)
             self.current_tokens = min(self.max_tokens, self.current_tokens + num_refills*self.refill_rate)
-            self.last_refill_time = now
+            self.last_refill_time = num_refills*self.time_interval
 
     def request_allowed(self, tokens: int = 1) -> bool:
         with self.lock:
