@@ -13,3 +13,6 @@ coverage.xml
 htmlcov/
 k6/
 results/
+memory.bin
+memray-flamegraph-memory.html
+new_memory.bin
