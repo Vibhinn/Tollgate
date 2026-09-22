@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from google.genai import types
+from google.genai.errors import ClientError, ServerError
 
+from src.app.exceptions import (
+    ModelProviderServerError, RateLimitedFromModelProvider,
+    PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel,
+)
 from src.llm.connection import LLMConnection
 from src.llm.repository.gemini_repository import GeminiRepository
 
@@ -39,3 +44,34 @@ async def test_invoke_normalizes_raw_sdk_response(gemini_client):
     assert result.content == "hi there"
     assert result.input_tokens == 12
     assert result.output_tokens == 34
+
+
+@pytest.mark.parametrize(
+    "status_code, expected_domain_exception",
+    [
+        (429, RateLimitedFromModelProvider),
+        (403, PermissionDeniedForModel),
+        (401, APIKeyInvalidOrExpired),
+        (404, BadRequestToModel),
+    ],
+)
+async def test_invoke_maps_client_errors_to_domain_exceptions(gemini_client, status_code, expected_domain_exception):
+    sdk_exception = ClientError(status_code, {"error": {"message": "boom"}})
+    gemini_client.aio.models.generate_content.side_effect = sdk_exception
+    repo = GeminiRepository()
+
+    with pytest.raises(expected_domain_exception) as exc_info:
+        await repo.invoke("hello", "gemini-2.0-flash", 4096)
+
+    assert exc_info.value.__cause__ is sdk_exception
+
+
+async def test_invoke_maps_server_error_to_model_provider_server_error(gemini_client):
+    sdk_exception = ServerError(500, {"error": {"message": "outage"}})
+    gemini_client.aio.models.generate_content.side_effect = sdk_exception
+    repo = GeminiRepository()
+
+    with pytest.raises(ModelProviderServerError) as exc_info:
+        await repo.invoke("hello", "gemini-2.0-flash", 4096)
+
+    assert exc_info.value.__cause__ is sdk_exception

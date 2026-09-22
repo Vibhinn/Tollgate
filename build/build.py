@@ -26,6 +26,7 @@ from src.utils.config import Config
 from src.utils.types import ApplicationRepositoryType, RedisStreamName
 
 from src.cache import CacheConnection
+from src.utils.decorators import UndeclaredException
 
 from .installation import MiddlewareInstallation, APIRouterInstallation
 
@@ -127,11 +128,15 @@ class Builder:
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 
         @self.app.exception_handler(APIError)
-        async def handle_model_provider_outage(request, exc):
+        async def handle_api_error(request, exc):
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 
         @self.app.exception_handler(BadRequestToModel)
-        async def handle_model_provider_outage(request, exc):
+        async def handle_bad_request(request, exc):
+            return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+        @self.app.exception_handler(UndeclaredException)
+        async def handle_undeclared_exception(request, exc):
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     def __create_and_initialize_connections(self):
