@@ -14,7 +14,9 @@ from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
 
-from src.app.exceptions import ModelSemanticNotFound, PermissionDeniedForModel, APIKeyExpired, CreditExhaustion, RateLimitedFromModelProvider, ModelProviderServerError
+from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
+                                APIKeyInvalidOrExpired, CreditExhaustion, RateLimitedFromModelProvider,
+                                ModelProviderServerError, APIError, BadRequestToModel)
 
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository
@@ -108,7 +110,7 @@ class Builder:
         async def handle_model_permission_denied(request, exc):
             return JSONResponse(status_code=403, content={"detail": str(exc)})
 
-        @self.app.exception_handler(APIKeyExpired)
+        @self.app.exception_handler(APIKeyInvalidOrExpired)
         async def handle_api_key_expired(request, exc):
             return JSONResponse(status_code=401, content={"detail": str(exc)})
 
@@ -121,6 +123,14 @@ class Builder:
             return JSONResponse(status_code=429, content={"detail": str(exc)})
 
         @self.app.exception_handler(ModelProviderServerError)
+        async def handle_model_provider_outage(request, exc):
+            return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+        @self.app.exception_handler(APIError)
+        async def handle_model_provider_outage(request, exc):
+            return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+        @self.app.exception_handler(BadRequestToModel)
         async def handle_model_provider_outage(request, exc):
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 

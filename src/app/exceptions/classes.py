@@ -1,7 +1,7 @@
 class ModelSemanticNotFound(Exception):
     pass
 
-class APIKeyExpired(Exception):
+class APIKeyInvalidOrExpired(Exception):
     pass
 
 class PermissionDeniedForModel(Exception):
@@ -14,4 +14,10 @@ class RateLimitedFromModelProvider(Exception):
     pass
 
 class ModelProviderServerError(Exception):
+    pass
+
+class BadRequestToModel(Exception):
+    pass
+
+class APIError(Exception):
     pass
