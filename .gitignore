@@ -16,3 +16,4 @@ results/
 memory.bin
 memray-flamegraph-memory.html
 new_memory.bin
+tollgate.egg-info

@@ -37,7 +37,7 @@ class UndeclaredException(Exception):
     pass
 
 def throws_exception(*exceptions, strict: bool = True):
-    """For wrapping functions - list all the exceptions you """
+    """For wrapping functions - list all the exceptions you want the method to throw. When strict=True, throws an exception by itself"""
 
     def decorator(func):
         is_async_function: bool = inspect.iscoroutinefunction(func)

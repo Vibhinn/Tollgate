@@ -1,7 +1,0 @@
-build
-cli
-docker
-k6
-results
-src
-tests
