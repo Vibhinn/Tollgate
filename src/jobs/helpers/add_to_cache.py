@@ -1,6 +1,6 @@
 import json
 from typing import override, TYPE_CHECKING
-from src.utils.types import CacheJobData, CacheType
+from src.utils.types import CacheJobData, CacheType, VectorRepositoryCollection
 from .base import BaseHelper
 
 if TYPE_CHECKING:
@@ -39,6 +39,7 @@ class AddToCache(BaseHelper):
             embedding = await self.embedding_repo.create_vector_embeddings(payload.get("user_message"))
             await self.vector_cache.save(
                 embedding=embedding,
+                collection=VectorRepositoryCollection.SEMANTIC_CACHE,
                 user_message=payload.get("user_message"),
                 model_response=payload.get("model_response")
             )

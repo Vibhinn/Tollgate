@@ -15,5 +15,6 @@ k6/
 results/
 memory.bin
 memray-flamegraph-memory.html
+memray-flamegraph-new_memory.html
 new_memory.bin
 tollgate.egg-info
