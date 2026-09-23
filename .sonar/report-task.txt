@@ -1,0 +1,6 @@
+projectKey=tollgate
+serverUrl=http://localhost:9000
+serverVersion=26.9.0.129388
+dashboardUrl=http://localhost:9000/dashboard?id=tollgate
+ceTaskId=c05970fb-4544-49e6-b32b-df78f23af4ed
+ceTaskUrl=http://localhost:9000/api/ce/task?id=c05970fb-4544-49e6-b32b-df78f23af4ed

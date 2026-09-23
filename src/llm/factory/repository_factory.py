@@ -27,8 +27,5 @@ class LLMRepositoryFactory:
 
             self.repo_map[provider] = self.repository_providers[provider]()
 
-    def __build_repo_map(self):
-        pass
-
     def get_repo(self, model_name: str) -> LLMRepositoryInterface | None:
         return self.repo_map.get(model_name, None)

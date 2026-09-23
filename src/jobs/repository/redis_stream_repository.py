@@ -79,7 +79,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
 
     async def _read_new_entries(self):
-        streams: dict = {stream: ">" for stream in self._helper_registry.keys()}
+        streams: dict = dict.fromkeys(self._helper_registry.keys(), ">")
         messages: list = await self.redis_client.xreadgroup(
             groupname=GROUP_NAME,
             consumername=self._consumer_name,

@@ -4,7 +4,7 @@ from .helpers import run_initialization_setup, print_configuration, change_confi
 
 @click.group()
 def cli():
-    pass
+    pass #need to keep tis empty
 
 @cli.command()
 def init():
