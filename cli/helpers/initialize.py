@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet
 from ..ui import console
 from ..steps import guardrail, download_model, services, admin_setup, providers, rate_limiting, finalize
 
-def run_setup() -> None:
+def run_initialization_setup() -> None:
     from ..ui.console import print_banner
     print_banner()
 
