@@ -15,7 +15,7 @@ ROUTING_TABLE = {
     "claude-haiku-4-5": {"provider": LLMProvider.ANTHROPIC, "model": "claude-haiku-4-5-20251001"},
 
     # Gemini
-    "gemini-2.0-flash": {"provider": LLMProvider.GEMINI, "model": "gemini-2.0-flash"},
-    "gemini-2.0-flash-lite": {"provider": LLMProvider.GEMINI, "model": "gemini-2.0-flash-lite"},
-    "gemini-1.5-pro": {"provider": LLMProvider.GEMINI, "model": "gemini-1.5-pro"},
+    "gemini-3.5-flash": {"provider": LLMProvider.GEMINI, "model": "gemini-3.5-flash"},
+    "gemini-3.5-flash-lite": {"provider": LLMProvider.GEMINI, "model": "gemini-3.5-flash-lite"},
+    "gemini-3.5-pro": {"provider": LLMProvider.GEMINI, "model": "gemini-3.5-pro"},
 }
