@@ -192,7 +192,7 @@ DONE ─────────────────────────
 | 14 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
 | 15 | Streaming responses (SSE / chunked transfer) | 📋 Planned |
 | 16 | Per-token budget enforcement and cost caps | 📋 Planned |
-| 17 | Fallback chains (primary → fallback on error/timeout) | 📋 Planned |
+| 17 | Fallback chains (primary → fallback on error/timeout) | ✅ Done |
 | 18 | Multi-tenant routing with isolated rate limits | 📋 Planned |
 | 19 | OpenAI-compatible `/v1/chat/completions` drop-in API | ✅ Done |
 
