@@ -37,12 +37,12 @@ def run(config: dict) -> dict:
     console.print()
     console.print(
         "  [dim]To change a specific setting without wiping everything, run:[/dim]\n"
-        "  [bold cyan]tollgate change --config[/bold cyan]\n"
+        "  [bold cyan]tollgate config --change[/bold cyan]\n"
     )
 
     user_confirmation: str = Prompt.ask("  [bold white]Are you sure you want to continue?[/bold white] [dim](Y/N)[/dim]")
     if user_confirmation.lower() != "y":
-        info("No changes made. Run [bold cyan]tollgate change --config[/bold cyan] to update a specific setting.")
+        info("No changes made. Run [bold cyan]tollgate config --change[/bold cyan] to update a specific setting.")
         sys.exit(0)
 
     info("To continue, verify your admin identity.")
@@ -75,7 +75,7 @@ def run(config: dict) -> dict:
         default=False,
     )
     if not first_confirm:
-        info("Wise choice. Run [bold cyan]tollgate change --config[/bold cyan] to update a specific setting.")
+        info("Wise choice. Run [bold cyan]tollgate config --change[/bold cyan] to update a specific setting.")
         sys.exit(0)
 
     console.print()

@@ -1,5 +1,5 @@
 import click
-from .helpers import run_initialization_setup, change_configuration
+from .helpers import run_initialization_setup, print_configuration, change_configuration
 
 
 @click.group()
@@ -11,7 +11,11 @@ def init():
     run_initialization_setup()
 
 @cli.command()
-def change():
-    change_configuration()
+@click.option("--change", "change_mode", is_flag=True, help="Interactively change a specific setting.")
+def config(change_mode: bool):
+    if change_mode:
+        change_configuration()
+    else:
+        print_configuration()
 
 

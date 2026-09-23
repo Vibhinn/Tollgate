@@ -4,7 +4,7 @@ models:
   anthropic:
     api_key: gAAAAABqr_92TJQ3scltMzLADyom65k-Dp2NrxeRdkZHDsIhRQmKyIGR9cREyCaQk_CCKJfok9gzkfhrEXEixbtLgxGloMQpFJL5znutaO-gp7levdLQ83emqpe7nC07Re-qShH84_cf4TjR3R-JK_kT4viCYgEgJVmRM3BQsfO_xegyll-HhyBpBl8cYkT8CTMvs-PEims93LyharMK4BnwCznmcEct0w==
   gemini:
-    api_key: NOT_CONFIGURED
+    api_key: gAAAAABqs91RPBUtaK8kp7Z9ZM2Mu2Twtu8mzhxFHWRYnxLW3rK6tJw3uQxWaBOI3ptNmGIR9tEwIUg5flxGMt0C-erz2CkYulT-FOb165jYaWGO2fqiOrnc6N13PzE-5ePt9Syl_-rXqrg9n3z1-MiFZ3VBBwlRgQ==
 embedding:
   model_name: minishlab/potion-base-8M
 rate_limiter:
@@ -12,7 +12,7 @@ rate_limiter:
   refill_rate: '100'
   time_interval: '1.0'
 gateway:
-  default_model: claude-opus-4-6
+  default_model: gemini-2.0-flash
   default_temperature: '0.7'
 admin:
   username: gAAAAABqr_9wTlLLIEH71uy3aXKlYccOHWdeJBXSCPPGsqwpiMUFdisYj-w514iFtq3BzsuccuqEonJFsFe9jYzdhg6Yn0-OhA==
