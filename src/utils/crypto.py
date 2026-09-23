@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import os
 from pathlib import Path
 from cryptography.fernet import Fernet
 from rich import print
@@ -39,6 +42,19 @@ def create_key(force: bool = False):
     key = Fernet.generate_key()
     _KEY_FILE.write_bytes(key)
     _KEY_FILE.chmod(0o600)
+
+
+def hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 260_000)
+    return base64.b64encode(salt + key).decode()
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    decoded = base64.b64decode(stored_hash.encode())
+    salt, stored_key = decoded[:16], decoded[16:]
+    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 260_000)
+    return key == stored_key
 
 
 def _verify_file_contents(content: bytes) -> bool:

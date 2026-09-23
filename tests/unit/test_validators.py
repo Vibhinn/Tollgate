@@ -77,8 +77,13 @@ def test_generate_token_request_accepts_valid_values():
 
 
 def test_generate_token_request_accepts_custom_lifetime():
-    req = GenerateTokenRequest(token_requirement="image", role="admin", lifetime=60)
+    req = GenerateTokenRequest(token_requirement="image", role="admin", lifetime=60, password="admin-password")
     assert req.lifetime == 60
+
+
+def test_generate_token_request_rejects_admin_role_without_password():
+    with pytest.raises(ValidationError):
+        GenerateTokenRequest(token_requirement="chat", role="admin")
 
 
 @pytest.mark.parametrize("requirement", ["video", "", "CHAT"])

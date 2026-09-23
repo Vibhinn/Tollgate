@@ -1,24 +1,9 @@
-import base64
-import hashlib
-import os
-
 from rich.prompt import Prompt
 
 from ..ui import step_header, success, error, info
-from src.utils.crypto import encrypt_with_key
+from src.utils.crypto import encrypt_with_key, hash_password, verify_password
 
-
-def _hash_password(password: str) -> str:
-    salt = os.urandom(16)
-    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 260_000)
-    return base64.b64encode(salt + key).decode()
-
-
-def verify_password(password: str, stored_hash: str) -> bool:
-    decoded = base64.b64decode(stored_hash.encode())
-    salt, stored_key = decoded[:16], decoded[16:]
-    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 260_000)
-    return key == stored_key
+__all__ = ["run", "verify_password"]
 
 
 def run(config: dict) -> dict:
@@ -37,7 +22,7 @@ def run(config: dict) -> dict:
 
     config["admin"] = {
         "username": encrypt_with_key(username, config["_fernet_key"]),
-        "password_hash": _hash_password(password),
+        "password_hash": hash_password(password),
     }
 
     success("Admin credentials encrypted and ready to write")
