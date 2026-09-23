@@ -15,7 +15,7 @@ def base_chat_payload(**overrides):
     return payload
 
 
-@pytest.mark.parametrize("model", ["gpt-4o", "claude-sonnet-4-6", "gemini-2.0-flash", "fast", "cheap", "smart"])
+@pytest.mark.parametrize("model", ["gpt-4o", "claude-sonnet-4-6", "gemini-3.5-flash", "fast", "cheap", "smart"])
 def test_chat_model_accepts_known_models_and_policies(model):
     chat = ChatModel(**base_chat_payload(model=model))
     assert chat.model == model

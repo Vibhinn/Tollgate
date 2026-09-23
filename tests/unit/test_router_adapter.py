@@ -9,6 +9,7 @@ from src.app.adapters.router_adapter import RouterAdapter
 def adapter():
     job_queue_manager = AsyncMock()
     ranking_repo = AsyncMock()
+    ranking_repo.is_unavailable.return_value = False
     intelligence = AsyncMock()
     llm_repo_factory = MagicMock()
     return (
@@ -28,17 +29,28 @@ async def test_get_best_model_maps_cheap_to_cheapest_configured_model_by_pricing
     result = await router_adapter.get_best_model("cheap")
 
     assert result == "gpt-4o-mini"
-    ranking_repo.get_top.assert_not_awaited()
+    ranking_repo.get_top_available.assert_not_awaited()
+
+
+async def test_get_best_model_excludes_unavailable_models_from_cheap_pricing(adapter):
+    router_adapter, _, ranking_repo, _, llm_repo_factory = adapter
+    llm_repo_factory.get_repo = lambda provider: object() if provider == "openai" else None
+    ranking_repo.is_unavailable.side_effect = lambda model_name: model_name == "gpt-4o-mini"
+
+    result = await router_adapter.get_best_model("cheap")
+
+    # gpt-4o-mini is cheapest but marked unavailable, so the next cheapest OpenAI model wins
+    assert result == "gpt-3.5-turbo"
 
 
 async def test_get_best_model_maps_fast_to_latency_ranking(adapter):
     router_adapter, _, ranking_repo, _, _ = adapter
-    ranking_repo.get_top.return_value = "gemini-2.0-flash"
+    ranking_repo.get_top_available.return_value = "gemini-3.5-flash"
 
     result = await router_adapter.get_best_model("fast")
 
-    ranking_repo.get_top.assert_awaited_once_with("model:ranking:latency")
-    assert result == "gemini-2.0-flash"
+    ranking_repo.get_top_available.assert_awaited_once_with("model:ranking:latency")
+    assert result == "gemini-3.5-flash"
 
 
 async def test_get_best_model_returns_none_for_unmapped_requirement(adapter):
@@ -47,7 +59,15 @@ async def test_get_best_model_returns_none_for_unmapped_requirement(adapter):
     result = await router_adapter.get_best_model("smart")
 
     assert result is None
-    ranking_repo.get_top.assert_not_awaited()
+    ranking_repo.get_top_available.assert_not_awaited()
+
+
+async def test_mark_model_unavailable_delegates_to_ranking_repo(adapter):
+    router_adapter, _, ranking_repo, _, _ = adapter
+
+    await router_adapter.mark_model_unavailable("gpt-4o-mini", 600)
+
+    ranking_repo.mark_unavailable.assert_awaited_once_with("gpt-4o-mini", 600)
 
 
 async def test_identify_model_intelligently_delegates_to_intelligence_layer(adapter):

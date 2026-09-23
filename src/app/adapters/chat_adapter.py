@@ -39,7 +39,7 @@ class ChatAdapter:
                 model_name,
                 user_message=messages[-1] if model_name == "smart" else None
             )
-            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages, max_tokens=max_tokens)
+            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages, max_tokens=max_tokens, model_selection_policy=model_name)
         else:
             return await self.router_repo.invoke_model(model_name=model_name, messages=messages, max_tokens=max_tokens)
 

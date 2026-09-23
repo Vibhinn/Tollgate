@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.app.adapters.chat_adapter import ChatAdapter
-from src.app.exceptions import ModelSemanticNotFound
 from src.utils.types import VectorRepositoryCollection
 
 
@@ -99,7 +98,7 @@ async def test_query_llm_routes_policy_models_through_router(build_adapter, samp
         assert call_kwargs["user_message"] is None
 
     router_manager.invoke_model.assert_awaited_once_with(
-        model_name="claude-haiku-4-5", messages=sample_messages, max_tokens=4096
+        model_name="claude-haiku-4-5", messages=sample_messages, max_tokens=4096, model_selection_policy=policy
     )
 
 

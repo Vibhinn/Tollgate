@@ -2,7 +2,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.app.exceptions import ModelSemanticNotFound
+from src.app.exceptions import (
+    ModelSemanticNotFound, CreditExhaustion, RateLimitedFromModelProvider, BadRequestToModel,
+)
 from src.router.router import RouterRepository
 from src.utils.types import LLMInvocationResult, Message
 
@@ -98,3 +100,96 @@ async def test_get_best_model_falls_back_to_configured_default(router_repository
     assert result == fake_config.get_config("gateway", "default_model")
     router_adapter.get_best_model.assert_not_awaited()
     router_adapter.identify_model_intelligently.assert_not_awaited()
+
+
+async def test_invoke_model_blocklists_and_does_not_retry_an_explicit_model_request(
+    router_repository, router_adapter, llm_repo_factory
+):
+    """A client that names a model directly (requirement=None) gets the real
+    error back instead of a silent substitution - but the model still gets
+    taken out of rotation for everyone else's auto-routed requests."""
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = CreditExhaustion("no credits left")
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(CreditExhaustion):
+        await router_repository.invoke_model("gpt-4o", messages, 4096)
+
+    router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
+    router_adapter.get_best_model.assert_not_awaited()
+    router_adapter.add_job_to_queue.assert_not_awaited()
+
+
+async def test_invoke_model_falls_back_to_next_best_model_for_auto_routed_requests(
+    router_repository, router_adapter, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = [CreditExhaustion("no credits left"), make_model_response("fallback answer")]
+    router_adapter.get_best_model.return_value = "gpt-4o-mini"
+    messages = [Message(role="user", content="hello")]
+
+    result = await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+
+    assert result == "fallback answer"
+    router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
+    router_adapter.get_best_model.assert_awaited_once_with("cheap")
+    router_adapter.add_job_to_queue.assert_awaited_once()
+
+
+async def test_invoke_model_raises_when_fallback_resolves_to_the_same_dead_model(
+    router_repository, router_adapter, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = CreditExhaustion("no credits left")
+    router_adapter.get_best_model.return_value = "gpt-4o"  # nothing else available
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(CreditExhaustion):
+        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+
+    router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
+
+
+async def test_invoke_model_raises_when_no_fallback_is_available(
+    router_repository, router_adapter, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = CreditExhaustion("no credits left")
+    router_adapter.get_best_model.return_value = None
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(CreditExhaustion):
+        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+
+
+@pytest.mark.parametrize("exception_cls, expected_ttl", [
+    (CreditExhaustion, 600),
+    (RateLimitedFromModelProvider, 30),
+])
+async def test_invoke_model_uses_a_shorter_ttl_for_transient_failures(
+    router_repository, router_adapter, llm_repo_factory, exception_cls, expected_ttl
+):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = exception_cls("boom")
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(exception_cls):
+        await router_repository.invoke_model("gpt-4o", messages, 4096)
+
+    router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", expected_ttl)
+
+
+async def test_invoke_model_does_not_blocklist_on_request_specific_errors(
+    router_repository, router_adapter, llm_repo_factory
+):
+    """BadRequestToModel reflects the request content, not provider health -
+    it shouldn't take the model out of rotation for other requests."""
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = BadRequestToModel("malformed request")
+    messages = [Message(role="user", content="hello")]
+
+    with pytest.raises(BadRequestToModel):
+        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+
+    router_adapter.mark_model_unavailable.assert_not_awaited()
+    router_adapter.get_best_model.assert_not_awaited()

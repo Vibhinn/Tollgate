@@ -26,10 +26,13 @@ class RouterAdapter:
     async def get_best_model(self, requirement: str):
         if requirement == "cheap":
             from src.router.core import get_cheapest_model
-            return get_cheapest_model(self.llm_repo_factory)
+            return await get_cheapest_model(self.llm_repo_factory, self.ranking_repo)
         if requirement == "fast":
-            return await self.ranking_repo.get_top("model:ranking:latency")
+            return await self.ranking_repo.get_top_available("model:ranking:latency")
         return None
 
     async def identify_model_intelligently(self, user_message: str) -> str:
         return await self.intelligence.classify(user_message)
+
+    async def mark_model_unavailable(self, model_name: str, ttl: int) -> None:
+        await self.ranking_repo.mark_unavailable(model_name, ttl)
