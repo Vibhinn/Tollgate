@@ -9,6 +9,8 @@ from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 
+from src.utils.types import RedisAtomicCounters
+
 if TYPE_CHECKING:
     from src.app.ports import CacheRepositoryInterface
 
@@ -22,11 +24,13 @@ class RateLimitingMiddleware(BaseMiddleware):
         @self.app.middleware("http")
         async def rate_limit(request: Request, call_next):
             if request.url.path in EXEMPT_PATHS:
+                await self.redis_repo.increment(RedisAtomicCounters.SUCCESSFUL)
                 return await call_next(request)
 
             auth_header: str | None = request.headers.get("Authorization")
 
             if not auth_header:
+                await self.redis_repo.increment(RedisAtomicCounters.REJECTED)
                 return JSONResponse(
                     status_code=401,
                     content={"detail":"No auth token in Header."}
@@ -38,6 +42,7 @@ class RateLimitingMiddleware(BaseMiddleware):
             bucket = self.rate_limiter.get_user_bucket(user_id)
 
             if not bucket.request_allowed():
+                await self.redis_repo.increment(RedisAtomicCounters.RATE_LIMITED)
                 retry_after = bucket.get_reset_time() - time.time()
                 return JSONResponse(
                     status_code=429,
@@ -51,6 +56,7 @@ class RateLimitingMiddleware(BaseMiddleware):
                 )
 
             response = await call_next(request)
+            await self.redis_repo.increment(RedisAtomicCounters.SUCCESSFUL)
             response.headers["X-RateLimit-Limit"] = str(bucket.max_tokens)
             response.headers["X-RateLimit-Remaining"] = str(bucket.get_remaining())
             response.headers["X-RateLimit-Reset"] = str(int(bucket.get_reset_time()))

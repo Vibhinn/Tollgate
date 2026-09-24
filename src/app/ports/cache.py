@@ -17,3 +17,11 @@ class CacheRepositoryInterface(ABC):
     @abstractmethod
     async def search(self, key: Any) -> Any:
         ...
+
+    @abstractmethod
+    async def increment(self, key: str) -> None:
+        ...
+
+    @abstractmethod
+    async def decrement(self, key: str) -> None:
+        ...

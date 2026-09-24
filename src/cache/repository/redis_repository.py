@@ -1,7 +1,7 @@
 from typing import override, Any
 
 from src.app.ports import CacheRepositoryInterface
-from src.utils.types import CacheType
+from src.utils.types import CacheType, ATOMIC_COUNTERS
 from ..connection import CacheConnection
 
 class RedisRepository(CacheRepositoryInterface):
@@ -24,4 +24,12 @@ class RedisRepository(CacheRepositoryInterface):
     @override
     async def search(self, key: Any) -> Any:
         return await self.cache_conn.get(key)
+
+    @override
+    async def increment(self, key: ATOMIC_COUNTERS) -> None:
+        _ = self.cache_conn.incr(key)
+
+    @override
+    async def decrement(self, key: ATOMIC_COUNTERS) -> None:
+        _ = self.cache_conn.decr(key)
 

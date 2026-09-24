@@ -63,3 +63,9 @@ class QueueType(StrEnum):
 
 class AdapterType(StrEnum):
     CHAT = "chat"
+
+class RedisAtomicCounters(StrEnum):
+    SUCCESSFUL = "successful"
+    FAILED = "failed"
+    RATE_LIMITED = "rate_limited"
+    REJECTED = "rejected"

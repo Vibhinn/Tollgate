@@ -11,6 +11,7 @@ from .enums import (
     ConfigurationSubSection,
     QueueType,
     AdapterType,
+    RedisAtomicCounters
 )
 
 REDIS_STREAM_NAMES = Literal[RedisStreamName.RESPONSE_CACHE, RedisStreamName.ANALYTICS]
@@ -57,4 +58,10 @@ CACHE_TYPE = Literal[CacheType.EXACT, CacheType.SEMANTIC]
 VECTOR_REPOSITORY_COLLECTIONS = Literal[
     VectorRepositoryCollection.SEMANTIC_CACHE,
     VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,
+]
+
+ATOMIC_COUNTERS = Literal[
+    RedisAtomicCounters.FAILED,
+    RedisAtomicCounters.SUCCESSFUL,
+    RedisAtomicCounters.RATE_LIMITED
 ]

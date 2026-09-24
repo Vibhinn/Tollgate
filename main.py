@@ -9,7 +9,7 @@ from src.app.migrations import BaseMigration
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler = container.resolve(RedisStreamRepository)
+    scheduler: RedisStreamRepository = container.resolve(RedisStreamRepository)
     db_migrations = container.resolve(BaseMigration)
 
     await db_migrations.run_all()
