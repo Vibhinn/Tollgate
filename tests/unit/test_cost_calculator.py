@@ -52,7 +52,7 @@ async def test_excludes_models_marked_unavailable():
 
 async def test_returns_none_when_every_configured_model_is_unavailable():
     factory = make_factory({"gemini"})
-    all_gemini = {"gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.5-pro"}
+    all_gemini = {"gemini-3.5-flash", "gemini-3.5-flash-lite"}
 
     result = await get_cheapest_model(factory, make_ranking_repo(unavailable=all_gemini))
 

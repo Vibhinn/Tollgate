@@ -25,7 +25,6 @@ class GeminiRepository(LLMRepositoryInterface):
     @throws_exception(ModelProviderServerError, RateLimitedFromModelProvider,
                        PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel)
     async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
-        print("We entered gemini repo!")
         try:
             response = await self.gemini_client.aio.models.generate_content(
                 model=model_name,
@@ -39,9 +38,7 @@ class GeminiRepository(LLMRepositoryInterface):
             )
 
         except ServerError as e:
-            print(e)
             raise ModelProviderServerError(str(e)) from e
 
         except ClientError as e:
-            print(e)
             raise self._client_error_map.get(e.code, BadRequestToModel)(str(e)) from e

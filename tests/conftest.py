@@ -31,9 +31,12 @@ class FakeConfig:
         return self._data.get(section, {})
 
     def get_config(self, section, option, sub_section=None):
+        value = self._data[section]
         if sub_section:
-            return self._data[section][sub_section][option]
-        return self._data[section][option]
+            path = sub_section if isinstance(sub_section, list) else [sub_section]
+            for key in path:
+                value = value[key]
+        return value[option]
 
 
 @pytest.fixture

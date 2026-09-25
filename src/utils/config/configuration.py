@@ -12,11 +12,18 @@ class Config:
     def get_entire_config_section(self, section: CONFIGURATION_SECTIONS) -> dict:
         return self._data.get(section, {})
 
-    def get_config(self, section: CONFIGURATION_SECTIONS, option: CONFIGURATION_OPTIONS, sub_section: CONFIGURATION_SUB_SECTIONS = None) -> str:
+    def get_config(
+        self,
+        section: CONFIGURATION_SECTIONS,
+        option: CONFIGURATION_OPTIONS,
+        sub_section: CONFIGURATION_SUB_SECTIONS | list[str] = None,
+    ) -> str:
+        value = self._data[section]
         if sub_section:
-            value = self._data.get(section)[sub_section][option]
-        else:
-            value = self._data[section][option]
+            path = sub_section if isinstance(sub_section, list) else [sub_section]
+            for key in path:
+                value = value[key]
+        value = value[option]
 
         if value.startswith("gAAAA"):
             from ..crypto import decrypt_value

@@ -42,11 +42,34 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
     assert result == "the answer"
     llm_repo.invoke.assert_awaited_once_with("hello there", "gpt-4o", 4096)
 
+
+async def test_invoke_model_sends_the_real_provider_model_id_not_the_routing_alias(
+    router_repository, router_adapter, llm_repo_factory
+):
+    """Regression test: invoke_model used to send model_name (the routing
+    table key the client requests by, e.g. "claude-haiku-4-5") straight to
+    the provider instead of model_entry["model"] (the real identifier the
+    provider expects, e.g. the dated "claude-haiku-4-5-20251001"). This
+    matters even more for self-hosted models, where the alias and the real
+    model name the local server has loaded are routinely different strings."""
+    _, llm_repo = llm_repo_factory
+    router_repository.routing_table = {
+        **router_repository.routing_table,
+        "ollama-llama3": {"provider": "openai", "model": "llama3"},
+    }
+    messages = [Message(role="user", content="hello there")]
+
+    await router_repository.invoke_model("ollama-llama3", messages, 4096)
+
+    llm_repo.invoke.assert_awaited_once_with("hello there", "llama3", 4096)
+
     router_adapter.add_job_to_queue.assert_awaited_once()
     call_args, call_kwargs = router_adapter.add_job_to_queue.await_args
     assert call_kwargs["collection_name"] == "analytics"
     analytics_payload = call_kwargs["data"]
-    assert analytics_payload["model_name"] == "gpt-4o"
+    # analytics/blocklisting stay keyed by the routing alias, not the real
+    # provider model id - only the actual provider call needs the real one
+    assert analytics_payload["model_name"] == "ollama-llama3"
     assert analytics_payload["input_tokens"] == 10
     assert analytics_payload["output_tokens"] == 20
     assert analytics_payload["latency_ms"] >= 0

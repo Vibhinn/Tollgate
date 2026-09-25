@@ -13,7 +13,11 @@ class CacheConnection:
 
     @classmethod
     def initialize(cls):
-        cls._redis_conn = redis.Redis(host="localhost", port=6379, decode_responses=True)
+        cls._redis_conn = redis.Redis(host="localhost",
+                                      port=6379,
+                                      decode_responses=True,
+                                      socket_timeout=3.0,
+                                      socket_connect_timeout=3.0)
         cls._vector_db_conn = AsyncQdrantClient(host="localhost", port=6333)
 
     @overload

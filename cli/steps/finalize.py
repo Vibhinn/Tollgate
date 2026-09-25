@@ -22,10 +22,13 @@ def run(config: dict) -> dict:
 
     data = {
         "models": {
-            meta["config_key"].lower(): {
-                "api_key": config["api_keys"].get(meta["config_key"], "NOT_CONFIGURED")
-            }
-            for meta in PROVIDERS.values()
+            **{
+                meta["config_key"].lower(): {
+                    "api_key": config["api_keys"].get(meta["config_key"], "NOT_CONFIGURED")
+                }
+                for meta in PROVIDERS.values()
+            },
+            "self_hosted": config.get("self_hosted_models", {}),
         },
         "embedding": {
             "model_name": config["embedding_model"],

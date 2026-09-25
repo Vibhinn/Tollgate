@@ -42,9 +42,11 @@ class RouterRepository:
         if not repository:
             raise ModelSemanticNotFound("Sorry, the provider is not supported by Tollgate at this moment. Please retry with a new one")
 
+        real_model_name: str = model_entry.get("model", model_name)
+
         try:
             start: float = time.monotonic()
-            model_response = await repository.invoke(messages[-1].content, model_name, max_tokens)
+            model_response = await repository.invoke(messages[-1].content, real_model_name, max_tokens)
             latency_ms: float = (time.monotonic() - start)*1000
         except tuple(self._TTL_BY_EXCEPTION_MAP) as e:
             ttl: int = self._TTL_BY_EXCEPTION_MAP[type(e)]

@@ -10,6 +10,7 @@ class LLMProvider(StrEnum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
     EMBEDDING = "embedding"
+    SELF_HOSTED = "self_hosted"
 
 
 class CacheType(StrEnum):
@@ -56,6 +57,8 @@ class ConfigurationSubSection(StrEnum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
 
+class ConfigurationValue(StrEnum):
+    SELF_HOSTED_NO_AUTH_PLACEHOLDER = "not-required"
 
 class QueueType(StrEnum):
     REDIS_STREAM = "redis_stream"

@@ -9,6 +9,7 @@ providers = {
     LLMProvider.OPENAI: lambda key: AsyncOpenAI(api_key=key),
     LLMProvider.ANTHROPIC: lambda key: AsyncAnthropic(api_key=key),
     LLMProvider.GEMINI: lambda key: genai.Client(api_key=key),
+    LLMProvider.SELF_HOSTED: lambda base_url, key: AsyncOpenAI(base_url=base_url, api_key=key)
 }
 
 embedding_model = {

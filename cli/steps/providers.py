@@ -1,4 +1,4 @@
-from rich.prompt import Prompt
+from rich.prompt import Prompt, Confirm
 from rich.table import Table
 
 from ..ui import console, step_header, success, error, info
@@ -61,6 +61,48 @@ def _pick_default_model(selected: list[str]) -> str:
         error(f"Enter a number between 1 and {len(all_models)}")
 
 
+def _collect_self_hosted_models(config: dict) -> dict:
+    self_hosted_models: dict[str, dict] = {}
+
+    console.print()
+    if not Confirm.ask(
+        "  [bold cyan]Add a self-hosted model?[/bold cyan] [dim](Ollama, llama.cpp, Apple FM, ...)[/dim]",
+        default=False,
+    ):
+        return self_hosted_models
+
+    while True:
+        alias = Prompt.ask(
+            "\n  [bold cyan]Name for this model[/bold cyan] [dim](your own name for it, used to request it - e.g. ollama-llama3)[/dim]"
+        )
+        while not alias or alias in self_hosted_models:
+            error(f"'{alias}' is empty or already added — pick a different name")
+            alias = Prompt.ask("  [bold cyan]Name for this model[/bold cyan]")
+
+        endpoint = Prompt.ask("  [bold cyan]Endpoint URL[/bold cyan] [dim](e.g. http://localhost:11434/v1)[/dim]")
+        model_name = Prompt.ask(
+            "  [bold cyan]Real model name[/bold cyan] [dim](exactly what the server expects, e.g. llama3)[/dim]"
+        )
+        api_key_input = Prompt.ask(
+            "  [bold cyan]API key[/bold cyan] [dim](press Enter if the server doesn't require one)[/dim]",
+            password=True,
+            default="",
+        )
+        api_key = encrypt_with_key(api_key_input, config["_fernet_key"]) if api_key_input else "NOT_CONFIGURED"
+
+        self_hosted_models[alias] = {
+            "endpoint": endpoint,
+            "model_name": model_name,
+            "api_key": api_key,
+        }
+        success(f"Added self-hosted model: [bold]{alias}[/bold]")
+
+        if not Confirm.ask("\n  [bold cyan]Add another self-hosted model?[/bold cyan]", default=False):
+            break
+
+    return self_hosted_models
+
+
 def run(config: dict) -> dict:
     step_header(4, "LLM Providers & API Keys", total=6)
 
@@ -95,5 +137,6 @@ def run(config: dict) -> dict:
     config["default_model"] = default_model
     config["default_temperature"] = str(temp)
     config["embedding_model"] = DEFAULT_EMBEDDING_MODEL
+    config["self_hosted_models"] = _collect_self_hosted_models(config)
 
     return config

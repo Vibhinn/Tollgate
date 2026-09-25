@@ -7,6 +7,7 @@ from typing import overload, Literal, TYPE_CHECKING
 from src.cache import CacheConnection
 from src.app.ports import JobQueueRepositoryInterface
 from src.utils.types import CacheType, RedisStreamName
+from src.app.exceptions import KVCacheNotReachable
 
 if TYPE_CHECKING:
     from ..helpers.base import BaseHelper
@@ -44,8 +45,11 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
     def start(self) -> None:
         #it has started in the main app lifespan event. The IDE does not reference it, hence the confusion
-        self._task = asyncio.create_task(self._run())
-        self._task.add_done_callback(self._on_task_done)
+        try:
+            self._task = asyncio.create_task(self._run())
+            self._task.add_done_callback(self._on_task_done)
+        except Exception as e:
+            raise KVCacheNotReachable("Sorry, redis service is not available") from e
 
 
     def _on_task_done(self, task: asyncio.Task) -> None:

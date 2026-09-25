@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from ..repository import AnthropicRepository, GeminiRepository, OpenAIRepository
+from ..repository import AnthropicRepository, GeminiRepository, OpenAIRepository, SelfHostedModelRepository
 
 from src.utils.types import ConfigurationSection, ConfigurationEnums, ConfigurationOption, LLMProvider
 
@@ -21,6 +21,11 @@ class LLMRepositoryFactory:
 
         configured_models = self.config.get_entire_config_section(ConfigurationSection.MODELS)
         for provider in configured_models.keys():
+            if provider == LLMProvider.SELF_HOSTED:
+                for alias in configured_models[provider]:
+                    self.repo_map[alias] = SelfHostedModelRepository(alias)
+                continue
+
             configured_api_key: str = config.get_config(ConfigurationSection.MODELS, ConfigurationOption.API_KEY, provider)
             if configured_api_key == ConfigurationEnums.API_KEY_NOT_CONFIGURED.value:
                 continue

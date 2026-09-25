@@ -10,6 +10,7 @@ from .enums import (
     VectorRepositoryCollection,
     ConfigurationSection,
     ConfigurationOption,
+    ConfigurationValue,
     ConfigurationSubSection,
     QueueType,
     AdapterType,
@@ -22,5 +23,5 @@ __all__ = [
     "CacheJobData", "Message", "StreamPayload", "AnalyticsJobData", "LLMInvocationResult", "VECTOR_REPOSITORY_COLLECTIONS",
     "ConfigurationEnums", "LLMProvider", "CacheType", "ApplicationRepositoryType", "RedisStreamName",
     "VectorRepositoryCollection", "ConfigurationSection", "ConfigurationOption", "ConfigurationSubSection",
-    "QueueType", "AdapterType", "RedisAtomicCounters"
+    "QueueType", "AdapterType", "RedisAtomicCounters", "ConfigurationValue"
 ]

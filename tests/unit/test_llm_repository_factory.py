@@ -7,6 +7,7 @@ from src.llm.factory.repository_factory import LLMRepositoryFactory
 from src.llm.repository.openai_repository import OpenAIRepository
 from src.llm.repository.anthropic_repository import AnthropicRepository
 from src.llm.repository.gemini_repository import GeminiRepository
+from src.llm.repository.self_hosted_model_repository import SelfHostedModelRepository
 
 
 @pytest.fixture
@@ -52,3 +53,28 @@ def test_get_repo_returns_same_instance_on_repeated_calls(factory):
     first = factory.get_repo("openai")
     second = factory.get_repo("openai")
     assert first is second
+
+
+def test_get_repo_builds_an_isolated_self_hosted_repository_per_alias(fake_config, monkeypatch):
+    """Regression test: self-hosted models used to all be built under the
+    single shared LLMProvider.SELF_HOSTED key in repo_map, so configuring
+    more than one would silently overwrite the previous one."""
+    monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, alias: MagicMock()))
+    fake_config._data = {
+        **fake_config._data,
+        "models": {
+            "self_hosted": {
+                "ollama-llama3": {"endpoint": "http://localhost:11434/v1", "model_name": "llama3", "api_key": "NOT_CONFIGURED"},
+                "llamacpp-mistral": {"endpoint": "http://localhost:8080/v1", "model_name": "mistral-7b", "api_key": "NOT_CONFIGURED"},
+            },
+        },
+    }
+
+    factory = LLMRepositoryFactory(fake_config)
+
+    ollama_repo = factory.get_repo("ollama-llama3")
+    llamacpp_repo = factory.get_repo("llamacpp-mistral")
+
+    assert isinstance(ollama_repo, SelfHostedModelRepository)
+    assert isinstance(llamacpp_repo, SelfHostedModelRepository)
+    assert ollama_repo is not llamacpp_repo

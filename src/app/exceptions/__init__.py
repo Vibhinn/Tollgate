@@ -2,7 +2,7 @@ from .classes import (
     ModelSemanticNotFound, APIKeyInvalidOrExpired,
     PermissionDeniedForModel, RateLimitedFromModelProvider,
     CreditExhaustion, ModelProviderServerError, BadRequestToModel,
-    APIError)
+    APIError, SemanticCacheNotReachable, KVCacheNotReachable)
 
 __all__ = ["ModelSemanticNotFound", "APIKeyInvalidOrExpired", "PermissionDeniedForModel", "RateLimitedFromModelProvider", "CreditExhaustion", "ModelProviderServerError",
-           "BadRequestToModel", "APIError"]
+           "BadRequestToModel", "APIError", "SemanticCacheNotReachable", "KVCacheNotReachable"]
