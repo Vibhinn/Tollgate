@@ -216,3 +216,64 @@ async def test_invoke_model_does_not_blocklist_on_request_specific_errors(
 
     router_adapter.mark_model_unavailable.assert_not_awaited()
     router_adapter.get_best_model.assert_not_awaited()
+
+
+async def test_warm_up_latency_rankings_sends_a_minimal_probe_to_each_configured_model(
+    router_repository, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    router_repository.routing_table = {
+        "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
+        "gpt-4o-mini": {"provider": "openai", "model": "gpt-4o-mini"},
+    }
+
+    await router_repository.warm_up_latency_rankings()
+
+    assert llm_repo.invoke.await_count == 2
+    called_models = {call.args[1] for call in llm_repo.invoke.await_args_list}
+    assert called_models == {"gpt-4o", "gpt-4o-mini"}
+    for call in llm_repo.invoke.await_args_list:
+        assert call.args[0] == "Hi"
+        assert call.args[2] == 1
+
+
+async def test_warm_up_latency_rankings_skips_unconfigured_models(router_repository, llm_repo_factory):
+    """Only "openai" has a repo in the shared llm_repo_factory fixture -
+    an anthropic entry with no configured repo must not be probed."""
+    _, llm_repo = llm_repo_factory
+    router_repository.routing_table = {
+        "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
+        "claude-sonnet-4-6": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
+    }
+
+    await router_repository.warm_up_latency_rankings()
+
+    llm_repo.invoke.assert_awaited_once_with("Hi", "gpt-4o", 1)
+
+
+async def test_warm_up_latency_rankings_continues_past_a_failing_probe(router_repository, llm_repo_factory):
+    """One broken/unreachable model shouldn't stop the others from being
+    probed, or make startup itself fail."""
+    _, llm_repo = llm_repo_factory
+    router_repository.routing_table = {
+        "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
+        "gpt-4o-mini": {"provider": "openai", "model": "gpt-4o-mini"},
+    }
+    llm_repo.invoke.side_effect = [Exception("boom"), make_model_response()]
+
+    await router_repository.warm_up_latency_rankings()  # must not raise
+
+    assert llm_repo.invoke.await_count == 2
+
+
+async def test_warm_up_latency_rankings_does_nothing_when_nothing_is_configured(
+    router_repository, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    router_repository.routing_table = {
+        "claude-sonnet-4-6": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
+    }
+
+    await router_repository.warm_up_latency_rankings()  # must not raise
+
+    llm_repo.invoke.assert_not_awaited()

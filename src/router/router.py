@@ -1,3 +1,4 @@
+import asyncio
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -6,14 +7,13 @@ from src.app.exceptions import (
     ModelSemanticNotFound, APIKeyInvalidOrExpired, CreditExhaustion,
     PermissionDeniedForModel, RateLimitedFromModelProvider, ModelProviderServerError,
 )
-from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption
+from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
 from src.app.adapters import RouterAdapter
 
 if TYPE_CHECKING:
-    from src.utils.types import Message
     from src.utils.config import Config
 
 
@@ -83,3 +83,20 @@ class RouterRepository:
             return await self.router_adapter.identify_model_intelligently(user_message.content) #type: ignore
         else:
             return self.config.get_config(ConfigurationSection.GATEWAY, ConfigurationOption.DEFAULT_MODEL)
+
+    async def warm_up_latency_rankings(self) -> None:
+        probe_message = [Message(role="user", content="Hi")]
+        candidates = [
+            model_name for model_name, entry in self.routing_table.items()
+            if self.llm_repo_factory.get_repo(entry.get("provider")) is not None
+        ]
+
+        #we are probing simultaneously. To update the EMA rankings. If model is dead, they are blocklisted with TTL
+        await asyncio.gather(*(self._probe(model_name, probe_message) for model_name in candidates))
+
+
+    async def _probe(self, model_name: str, probe_message: list[Message]) -> None:
+        try:
+            await self.invoke_model(model_name, probe_message, max_tokens=1)
+        except Exception:
+            pass
