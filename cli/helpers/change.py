@@ -291,8 +291,8 @@ _CHANGE_OPTIONS = {
     "1": ("Rate limiter setting", _change_rate_limiter),
     "2": ("Embedding model", _change_embedding_model),
     "3": ("Default model", _change_default_model),
-    "4": ("Add / update a provider API key", _add_new_model),
-    "5": ("Add / update a self-hosted model", _add_self_hosted_model),
+    "4": ("Add or update a provider API key", _add_new_model),
+    "5": ("Add or update a self-hosted model", _add_self_hosted_model),
     "6": ("Remove a self-hosted model", _remove_self_hosted_model),
 }
 

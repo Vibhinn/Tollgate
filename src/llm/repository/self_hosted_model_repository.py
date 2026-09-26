@@ -23,15 +23,29 @@ class SelfHostedModelRepository(LLMRepositoryInterface):
                        PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel, APIError)
     async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
         try:
-            response = await self.self_hosted_model_client.chat.completions.create(
+            stream = await self.self_hosted_model_client.chat.completions.create( #type: ignore
                 model=model_name,
                 messages=[{"role": "user", "content": message}],
                 max_tokens=max_tokens,
+                stream=True,
+                stream_options={"include_usage": True},
             )
+
+            content_parts: list[str] = []
+            input_tokens = 0
+            output_tokens = 0
+
+            async for chunk in stream: #type: ignore
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content_parts.append(chunk.choices[0].delta.content)
+                if chunk.usage:
+                    input_tokens = chunk.usage.prompt_tokens
+                    output_tokens = chunk.usage.completion_tokens
+
             return LLMInvocationResult(
-                content=response.choices[0].message.content,
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
+                content="".join(content_parts),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
             )
 
         except InternalServerError as e:

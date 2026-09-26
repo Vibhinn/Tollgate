@@ -27,9 +27,9 @@ class RedisRepository(CacheRepositoryInterface):
 
     @override
     async def increment(self, key: ATOMIC_COUNTERS) -> None:
-        _ = self.cache_conn.incr(key)
+        _ = await self.cache_conn.incr(key)
 
     @override
     async def decrement(self, key: ATOMIC_COUNTERS) -> None:
-        _ = self.cache_conn.decr(key)
+        _ = await self.cache_conn.decr(key)
 
