@@ -4,7 +4,7 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 
 from ..ui import console
-from ..steps import guardrail, download_model, services, admin_setup, providers, rate_limiting, finalize
+from ..steps import guardrail, download_model, download_server, services, admin_setup, providers, rate_limiting, finalize
 
 def run_initialization_setup() -> None:
     from ..ui.console import print_banner
@@ -16,6 +16,7 @@ def run_initialization_setup() -> None:
         config["_fernet_key"] = Fernet.generate_key()
 
         config = download_model.run(config)
+        config = download_server.run(config)
         config = services.run(config)
         config = admin_setup.run(config)
         config = providers.run(config)

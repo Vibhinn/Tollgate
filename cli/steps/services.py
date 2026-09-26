@@ -40,7 +40,7 @@ def _try_start_qdrant() -> bool:
 
 
 def run(config: dict) -> dict:
-    step_header(2, "Infrastructure Services", total=6)
+    step_header(3, "Infrastructure Services", total=7)
 
     # Redis
     if _port_open("localhost", 6379):

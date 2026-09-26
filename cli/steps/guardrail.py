@@ -31,7 +31,7 @@ def run(config: dict) -> dict:
         config["force_key_reset"] = False
         return config
 
-    step_header(0, "Existing Configuration Detected", total=6)
+    step_header(0, "Existing Configuration Detected", total=7)
 
     warn("A Tollgate configuration already exists on this machine.")
     console.print()

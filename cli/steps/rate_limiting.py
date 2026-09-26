@@ -5,7 +5,7 @@ from ..ui import console, step_header, success, error, info
 
 
 def run(config: dict) -> dict:
-    step_header(5, "Rate Limiting", total=6)
+    step_header(6, "Rate Limiting", total=7)
 
     info(
         "Tollgate uses a token-bucket limiter per user.\n"

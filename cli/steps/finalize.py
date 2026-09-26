@@ -18,7 +18,7 @@ def _cleanup_tmp():
 
 
 def run(config: dict) -> dict:
-    step_header(6, "Writing Configuration", total=6)
+    step_header(7, "Writing Configuration", total=7)
 
     data = {
         "models": {

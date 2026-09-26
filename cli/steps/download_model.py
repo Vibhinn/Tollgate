@@ -23,7 +23,7 @@ def _model_dir() -> Path:
 
 
 def run(config: dict) -> dict:
-    step_header(1, "Routing Intelligence Model", total=6)
+    step_header(1, "Routing Intelligence Model", total=7)
 
     model_dir = _model_dir()
     model_path = model_dir / MODEL_FILENAME
