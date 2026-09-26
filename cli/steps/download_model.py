@@ -11,11 +11,11 @@ from rich.progress import (
 
 from ..ui import console, step_header, success, warn, info
 
+MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+
 _MODEL_URL = (
-    "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/"
-    "qwen2.5-0.5b-instruct-q4_k_m.gguf?download=true"
+    f"https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/{MODEL_FILENAME}?download=true"
 )
-_MODEL_FILENAME = "qwen2.5-0.5b-instruct-q4_k_m.gguf"
 
 
 def _model_dir() -> Path:
@@ -57,3 +57,6 @@ def run(config: dict) -> dict:
     success(f"Model saved to [dim]{model_path}[/dim]")
     config["model_path"] = str(model_path)
     return config
+
+
+
