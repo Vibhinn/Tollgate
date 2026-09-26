@@ -31,8 +31,12 @@ class RouterAdapter:
             return await self.ranking_repo.get_top_available("model:ranking:latency")
         return None
 
-    async def identify_model_intelligently(self, user_message: str) -> str:
-        return await self.intelligence.classify(user_message)
+    async def identify_model_intelligently(self, user_message: str) -> str | None:
+        category = await self.intelligence.classify(user_message)
+        print("The model identified - ", category)
+
+        from src.router.core import resolve_smart_model
+        return await resolve_smart_model(category, self.llm_repo_factory, self.ranking_repo)
 
     async def mark_model_unavailable(self, model_name: str, ttl: int) -> None:
         await self.ranking_repo.mark_unavailable(model_name, ttl)

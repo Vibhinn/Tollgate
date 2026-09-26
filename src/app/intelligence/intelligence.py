@@ -34,7 +34,9 @@ class RoutingIntelligenceLayer:
                                                                     score_threshold=0.7)
 
         if answer_from_vector_db:
-            return answer_from_vector_db
+            # QdrantRepository.search() wraps a hit as {"response": <value>} -
+            # return the category string itself, not the wrapper dict.
+            return answer_from_vector_db["response"]
 
         else:
             loop = asyncio.get_event_loop()
@@ -45,15 +47,20 @@ class RoutingIntelligenceLayer:
                     messages=[
                         {
                             "role": "system",
-                            "content": "Classify the user request. Reply with only one word: SIMPLE, CODE, REASONING, or CREATIVE.",
+                            "content": "Classify the user request. Reply only 1 word - SIMPLE, CODE, REASONING or CREATIVE.If it is a generic question (basic question from general knowledge, basic programming questions or "
+                                       "standard queries are SIMPLE. Queries which have stack traces, or requests which are asking why this error exists"
+                                       "Or ask you to give code for a problem statement, are CODE."
+                                       "The tasks which require deeper thinking, or user asks for in depth explanation, or it is a rhetoric or philosophical question, is REASONING."
+                                       "If someone asks to generate, imagine or asks about a hypothetical situation or imagination, those are CREATIVE requests.",
                         },
                         {"role": "user", "content": user_message},
                     ],
                     grammar=self.grammar,
-                    max_tokens=1,
+                    max_tokens=10,
                 ),
             )
             model_response = result["choices"][0]["message"]["content"].strip()
+            print("The internal model gave - ", model_response)
             await self.vector_cache_repo.save(request_embedding, VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,  user_message, model_response)
 
             return model_response

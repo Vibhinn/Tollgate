@@ -70,14 +70,50 @@ async def test_mark_model_unavailable_delegates_to_ranking_repo(adapter):
     ranking_repo.mark_unavailable.assert_awaited_once_with("gpt-4o-mini", 600)
 
 
-async def test_identify_model_intelligently_delegates_to_intelligence_layer(adapter):
-    router_adapter, _, _, intelligence, _ = adapter
+async def test_identify_model_intelligently_resolves_the_category_to_a_configured_model(adapter):
+    """Regression test: classify() returns a semantic category (e.g.
+    "REASONING"), not a routable model name - identify_model_intelligently
+    must translate it into a real, configured model before returning."""
+    router_adapter, _, _, intelligence, llm_repo_factory = adapter
     intelligence.classify.return_value = "REASONING"
+    llm_repo_factory.get_repo = lambda provider: object() if provider == "anthropic" else None
 
     result = await router_adapter.identify_model_intelligently("solve this equation")
 
     intelligence.classify.assert_awaited_once_with("solve this equation")
-    assert result == "REASONING"
+    assert result == "claude-opus-4-6"
+
+
+async def test_identify_model_intelligently_skips_unconfigured_preferences_for_the_category(adapter):
+    router_adapter, _, _, intelligence, llm_repo_factory = adapter
+    intelligence.classify.return_value = "REASONING"
+    # claude-opus-4-6 (anthropic) is preferred first for REASONING but isn't configured here
+    llm_repo_factory.get_repo = lambda provider: object() if provider == "openai" else None
+
+    result = await router_adapter.identify_model_intelligently("solve this equation")
+
+    assert result == "o1"
+
+
+async def test_identify_model_intelligently_skips_a_blocklisted_preference(adapter):
+    router_adapter, _, ranking_repo, intelligence, llm_repo_factory = adapter
+    intelligence.classify.return_value = "REASONING"
+    llm_repo_factory.get_repo = lambda provider: object()
+    ranking_repo.is_unavailable.side_effect = lambda model_name: model_name == "claude-opus-4-6"
+
+    result = await router_adapter.identify_model_intelligently("solve this equation")
+
+    assert result == "o1"
+
+
+async def test_identify_model_intelligently_returns_none_when_nothing_in_the_category_is_available(adapter):
+    router_adapter, _, _, intelligence, llm_repo_factory = adapter
+    intelligence.classify.return_value = "REASONING"
+    llm_repo_factory.get_repo = lambda provider: None
+
+    result = await router_adapter.identify_model_intelligently("solve this equation")
+
+    assert result is None
 
 
 async def test_add_job_to_queue_delegates_to_job_queue_manager(adapter):
