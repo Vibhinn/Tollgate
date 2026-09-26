@@ -188,7 +188,7 @@ DONE ─────────────────────────
 | 10 | Add a dedicated CLI to setup the proxy on end user | ✅ Done |
 | 11 | Analytics dashboard endpoint (data collected, API stub) | 🔧 In Progress |
 | 12 | Gemini provider fully wired (config exists, adapter pending) | ✅ Done |
-| 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |
+| 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | ✅ Done |
 | 14 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
 | 15 | Streaming responses (SSE / chunked transfer) | 🔧 In Progress |
 | 16 | Per-token budget enforcement and cost caps | 📋 Planned |
