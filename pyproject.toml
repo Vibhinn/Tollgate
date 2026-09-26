@@ -23,7 +23,7 @@ dependencies = [
     "google-genai>=2.8",
     "model2vec>=0.8",
     "numpy>=2.4",
-    "llama-cpp-python>=0.3.32",
+    "httpx",
 ]
 
 [project.optional-dependencies]

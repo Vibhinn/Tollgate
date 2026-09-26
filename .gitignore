@@ -6,6 +6,7 @@ __pycache__/
 .DS_Store
 .tollgate.key
 src/app/intelligence/model/*
+src/app/intelligence/server/*
 .claude
 .pytest_cache/
 .coverage

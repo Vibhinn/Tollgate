@@ -33,7 +33,6 @@ class RouterAdapter:
 
     async def identify_model_intelligently(self, user_message: str) -> str | None:
         category = await self.intelligence.classify(user_message)
-        print("The model identified - ", category)
 
         from src.router.core import resolve_smart_model
         return await resolve_smart_model(category, self.llm_repo_factory, self.ranking_repo)

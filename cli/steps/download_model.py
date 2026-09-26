@@ -14,7 +14,7 @@ from ..ui import console, step_header, success, warn, info
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
 _MODEL_URL = (
-    f"https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/{MODEL_FILENAME}?download=true"
+    f"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/{MODEL_FILENAME}?download=true"
 )
 
 
@@ -26,7 +26,7 @@ def run(config: dict) -> dict:
     step_header(1, "Routing Intelligence Model", total=6)
 
     model_dir = _model_dir()
-    model_path = model_dir / _MODEL_FILENAME
+    model_path = model_dir / MODEL_FILENAME
 
     if model_path.exists():
         success(f"Model already present at [dim]{model_path}[/dim]")
@@ -34,7 +34,7 @@ def run(config: dict) -> dict:
         return config
 
     model_dir.mkdir(parents=True, exist_ok=True)
-    info(f"Downloading [bold]{_MODEL_FILENAME}[/bold] (~400 MB) — this runs once")
+    info(f"Downloading [bold]{MODEL_FILENAME}[/bold] (~1 GB) — this runs once")
 
     response = requests.get(_MODEL_URL, stream=True, timeout=30)
     response.raise_for_status()

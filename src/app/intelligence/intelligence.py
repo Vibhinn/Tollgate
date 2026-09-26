@@ -1,9 +1,10 @@
-import asyncio
-from functools import partial
+import subprocess
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from llama_cpp import Llama, LlamaGrammar
+import httpx
+from openai import AsyncOpenAI
 
 from src.utils.types import ApplicationRepositoryType, VectorRepositoryCollection
 
@@ -31,24 +32,56 @@ _CLASSIFICATION_PROMPT = (
     "  Example: \"Imagine if the internet had never been invented.\" -> CREATIVE"
 )
 
+_GRAMMAR = r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
+
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+SERVER_BINARY_NAME = "llama-server"
+SERVER_HOST = "127.0.0.1"
+SERVER_PORT = 8091
+_READINESS_TIMEOUT_SECONDS = 30
+
 
 class RoutingIntelligenceLayer:
     def __init__(self, repo_factory: ApplicationRepositoryFactory):
         model_path = Path(__file__).parent / "model" / MODEL_FILENAME
-        self.local_llm = Llama(
-            model_path=str(model_path),
-            n_ctx=512,
-            n_threads=2,
-            verbose=False,
-            chat_format="chatml",
-        )
-        self.grammar = LlamaGrammar.from_string(
-            r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
-        )
+        server_binary = Path(__file__).parent / "server" / SERVER_BINARY_NAME
+
+        self._server_process = subprocess.Popen([
+            str(server_binary),
+            "-m", str(model_path),
+            "-c", "2048",
+            "--host", SERVER_HOST,
+            "--port", str(SERVER_PORT),
+            "-ngl", "99",
+        ])
+        self._wait_until_ready()
+
+        self.client = AsyncOpenAI(base_url=f"http://{SERVER_HOST}:{SERVER_PORT}/v1", api_key="not-required")
 
         self.embedding_model_repo = repo_factory.get_repo(ApplicationRepositoryType.EMBEDDING)
         self.vector_cache_repo = repo_factory.get_repo(ApplicationRepositoryType.VECTOR_CACHE)
+
+    def _wait_until_ready(self) -> None:
+        deadline = time.monotonic() + _READINESS_TIMEOUT_SECONDS
+        while time.monotonic() < deadline:
+            if self._server_process.poll() is not None:
+                raise RuntimeError(
+                    f"{SERVER_BINARY_NAME} exited (code {self._server_process.returncode}) before becoming ready"
+                )
+            try:
+                if httpx.get(f"http://{SERVER_HOST}:{SERVER_PORT}/health", timeout=1).status_code == 200:
+                    return
+            except httpx.TransportError:
+                pass
+            time.sleep(0.2)
+        raise TimeoutError(f"{SERVER_BINARY_NAME} did not become ready within {_READINESS_TIMEOUT_SECONDS}s")
+
+    def shutdown(self) -> None:
+        self._server_process.terminate()
+        try:
+            self._server_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self._server_process.kill()
 
     async def classify(self, user_message: str) -> str:
         request_embedding = await self.embedding_model_repo.create_vector_embeddings(user_message)
@@ -61,22 +94,16 @@ class RoutingIntelligenceLayer:
             # return the category string itself, not the wrapper dict.
             return answer_from_vector_db["response"]
 
-        else:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None,
-                partial(
-                    self.local_llm.create_chat_completion,
-                    messages=[
-                        {"role": "system", "content": _CLASSIFICATION_PROMPT},
-                        {"role": "user", "content": user_message},
-                    ],
-                    grammar=self.grammar,
-                    max_tokens=10,
-                ),
-            )
-            model_response = result["choices"][0]["message"]["content"].strip()
-            print("The internal model gave - ", model_response)
-            await self.vector_cache_repo.save(request_embedding, VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE,  user_message, model_response)
+        result = await self.client.chat.completions.create(
+            model="qwen",  # llama-server serves whatever single model it was started with - this is ignored
+            messages=[
+                {"role": "system", "content": _CLASSIFICATION_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            max_tokens=10,
+            extra_body={"grammar": _GRAMMAR},
+        )
+        model_response = result.choices[0].message.content.strip()
+        await self.vector_cache_repo.save(request_embedding, VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE, user_message, model_response)
 
-            return model_response
+        return model_response
