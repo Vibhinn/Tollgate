@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.app.exceptions import (
-    ModelSemanticNotFound, CreditExhaustion, RateLimitedFromModelProvider, BadRequestToModel,
+    ModelSemanticNotFound, CreditExhaustion, RateLimitedFromModelProvider, BadRequestToModel, APIError,
 )
 from src.router.router import RouterRepository
 from src.utils.types import LLMInvocationResult, Message
@@ -188,6 +188,7 @@ async def test_invoke_model_raises_when_no_fallback_is_available(
 @pytest.mark.parametrize("exception_cls, expected_ttl", [
     (CreditExhaustion, 600),
     (RateLimitedFromModelProvider, 30),
+    (APIError, 30),
 ])
 async def test_invoke_model_uses_a_shorter_ttl_for_transient_failures(
     router_repository, router_adapter, llm_repo_factory, exception_cls, expected_ttl

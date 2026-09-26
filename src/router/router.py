@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from src.app.exceptions import (
     ModelSemanticNotFound, APIKeyInvalidOrExpired, CreditExhaustion,
-    PermissionDeniedForModel, RateLimitedFromModelProvider, ModelProviderServerError,
+    PermissionDeniedForModel, RateLimitedFromModelProvider, ModelProviderServerError, APIError,
 )
 from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message
 from src.utils.config import ROUTING_TABLE
@@ -29,6 +29,7 @@ class RouterRepository:
                                         PermissionDeniedForModel: 600,
                                         RateLimitedFromModelProvider: 30,
                                         ModelProviderServerError: 30,
+                                        APIError: 30,
                                     }
 
     async def invoke_model(self, model_name: str, messages: list[Message], max_tokens: int, model_selection_policy: str | None = None) -> str:
