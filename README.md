@@ -190,7 +190,7 @@ DONE ─────────────────────────
 | 12 | Gemini provider fully wired (config exists, adapter pending) | ✅ Done |
 | 13 | `"smart"` routing via quality ranking (currently pinned to Opus) | 🔧 In Progress |
 | 14 | Production-grade stream listener stability (cross-event-loop) | 🔧 In Progress |
-| 15 | Streaming responses (SSE / chunked transfer) | 📋 Planned |
+| 15 | Streaming responses (SSE / chunked transfer) | 🔧 In Progress |
 | 16 | Per-token budget enforcement and cost caps | 📋 Planned |
 | 17 | Fallback chains (primary → fallback on error/timeout) | ✅ Done |
 | 18 | Multi-tenant routing with isolated rate limits | 📋 Planned |
@@ -237,4 +237,4 @@ Tollgate/
 
 ---
 
-*Built with Python 3.12 · FastAPI · Redis · Qdrant · OpenAI SDK · Anthropic SDK · Google GenAI SDK*
+*Built with Python 3.14 · FastAPI · Redis · Qdrant · OpenAI SDK · Anthropic SDK · Google GenAI SDK*
