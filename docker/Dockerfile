@@ -1,7 +1,13 @@
 FROM python:3.14-slim
 
+# cmake/git: needed at `tollgate init` time to clone and compile llama.cpp
+# natively on this exact machine (see cli/steps/build_server.py) - avoids the
+# whole class of cross-machine shared-library packaging bugs a prebuilt
+# binary distribution model kept hitting.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
+        cmake \
+        git \
         curl \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
