@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import time
 from typing import TYPE_CHECKING
 
@@ -36,6 +37,8 @@ _CLASSIFICATION_PROMPT = (
 
 _GRAMMAR = r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
 
+_DEGRADED_FALLBACK_CATEGORY = "SIMPLE"
+
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 SERVER_BINARY_NAME = "llama-server"
 SERVER_HOST = "127.0.0.1"
@@ -48,17 +51,29 @@ class RoutingIntelligenceLayer:
         model_path = model_dir() / MODEL_FILENAME
         server_binary = server_dir() / SERVER_BINARY_NAME
 
-        self._server_process = subprocess.Popen([
-            str(server_binary),
-            "-m", str(model_path),
-            "-c", "2048",
-            "--host", SERVER_HOST,
-            "--port", str(SERVER_PORT),
-            "-ngl", "99",
-        ])
-        self._wait_until_ready()
+        self._server_process: subprocess.Popen | None = None
+        self.client: AsyncOpenAI | None = None
+        self._available = False
 
-        self.client = AsyncOpenAI(base_url=f"http://{SERVER_HOST}:{SERVER_PORT}/v1", api_key="not-required")
+        try:
+            self._server_process = subprocess.Popen([
+                str(server_binary),
+                "-m", str(model_path),
+                "-c", "2048",
+                "--host", SERVER_HOST,
+                "--port", str(SERVER_PORT),
+                "-ngl", "99",
+            ])
+            self._wait_until_ready()
+            self.client = AsyncOpenAI(base_url=f"http://{SERVER_HOST}:{SERVER_PORT}/v1", api_key="not-required")
+            self._available = True
+        except (OSError, RuntimeError, TimeoutError) as exc:
+            print(
+                f"WARNING: routing intelligence server failed to start ({exc}). "
+                f"\"smart\" routing will fall back to the {_DEGRADED_FALLBACK_CATEGORY} tier "
+                "until this is fixed and the gateway is restarted.",
+                file=sys.stderr,
+            )
 
         self.embedding_model_repo = repo_factory.get_repo(ApplicationRepositoryType.EMBEDDING)
         self.vector_cache_repo = repo_factory.get_repo(ApplicationRepositoryType.VECTOR_CACHE)
@@ -79,6 +94,8 @@ class RoutingIntelligenceLayer:
         raise TimeoutError(f"{SERVER_BINARY_NAME} did not become ready within {_READINESS_TIMEOUT_SECONDS}s")
 
     def shutdown(self) -> None:
+        if self._server_process is None:
+            return
         self._server_process.terminate()
         try:
             self._server_process.wait(timeout=5)
@@ -92,12 +109,13 @@ class RoutingIntelligenceLayer:
                                                                     score_threshold=0.7)
 
         if answer_from_vector_db:
-            # QdrantRepository.search() wraps a hit as {"response": <value>} -
-            # return the category string itself, not the wrapper dict.
             return answer_from_vector_db["response"]
 
+        if not self._available:
+            return _DEGRADED_FALLBACK_CATEGORY
+
         result = await self.client.chat.completions.create(
-            model="qwen",  # llama-server serves whatever single model it was started with - this is ignored
+            model="qwen",
             messages=[
                 {"role": "system", "content": _CLASSIFICATION_PROMPT},
                 {"role": "user", "content": user_message},

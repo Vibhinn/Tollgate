@@ -1,4 +1,5 @@
 import platform
+import subprocess
 import tarfile
 import zipfile
 from pathlib import Path
@@ -40,6 +41,17 @@ def _asset_name() -> str:
     )
 
 
+def _verify_binary_runs(binary_path: Path) -> None:
+    try:
+        subprocess.run([str(binary_path), "--help"], capture_output=True, timeout=10, check=True)
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(
+            f"Downloaded llama-server binary at {binary_path} could not run ({exc}). "
+            "Delete this file and re-run `tollgate init` to re-download it, or report this "
+            "at https://github.com/Vibhinn/tollgate-native/issues."
+        ) from exc
+
+
 def _extract(archive_path: Path, dest_dir: Path) -> None:
     if archive_path.suffix == ".zip":
         with zipfile.ZipFile(archive_path) as zf:
@@ -56,6 +68,7 @@ def run(config: dict) -> dict:
     binary_path = server_dir / BINARY_NAME
 
     if binary_path.exists():
+        _verify_binary_runs(binary_path)
         success(f"llama-server already present at [dim]{binary_path}[/dim]")
         return config
 
@@ -87,6 +100,8 @@ def run(config: dict) -> dict:
 
     if binary_path.exists():
         binary_path.chmod(binary_path.stat().st_mode | 0o111)
+
+    _verify_binary_runs(binary_path)
 
     success(f"llama-server saved to [dim]{server_dir}[/dim]")
     return config

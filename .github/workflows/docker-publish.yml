@@ -11,7 +11,11 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
