@@ -119,3 +119,37 @@ def test_initialize_passes_none_api_key_when_qdrant_not_configured(fake_config, 
 
     _, kwargs = qdrant_factory.call_args
     assert kwargs["api_key"] is None
+
+
+def test_initialize_raises_the_redis_connection_pool_above_the_default_of_100(fake_config, monkeypatch):
+    """Regression test: redis-py's ConnectionPool defaults max_connections to
+    100, which gets exhausted under real concurrent load (every request makes
+    at least two Redis round-trips - auth + rate limiting)."""
+    redis_factory = MagicMock()
+    monkeypatch.setattr(connection_module.redis, "Redis", redis_factory)
+    monkeypatch.setattr(connection_module, "AsyncQdrantClient", MagicMock())
+
+    _redis_qdrant_config(fake_config)
+
+    CacheConnection.initialize(fake_config)
+
+    _, kwargs = redis_factory.call_args
+    assert kwargs["max_connections"] > 100
+
+
+def test_initialize_raises_the_qdrant_connection_pool_above_the_default_of_100(fake_config, monkeypatch):
+    """Regression test: qdrant-client's underlying httpx transport defaults
+    pool_size to None, which falls back to httpx's own default of 100
+    concurrent connections - this surfaced in production as httpx.PoolTimeout
+    on every semantic-cache read/write once concurrent Qdrant traffic
+    exceeded 100 in-flight requests."""
+    monkeypatch.setattr(connection_module.redis, "Redis", MagicMock())
+    qdrant_factory = MagicMock()
+    monkeypatch.setattr(connection_module, "AsyncQdrantClient", qdrant_factory)
+
+    _redis_qdrant_config(fake_config)
+
+    CacheConnection.initialize(fake_config)
+
+    _, kwargs = qdrant_factory.call_args
+    assert kwargs["pool_size"] > 100

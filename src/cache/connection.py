@@ -34,6 +34,7 @@ class CacheConnection:
             port=int(config.get_config(ConfigurationSection.QDRANT, ConfigurationOption.PORT)),
             api_key=None if qdrant_api_key == ConfigurationEnums.API_KEY_NOT_CONFIGURED.value else qdrant_api_key,
             https=config.get_config(ConfigurationSection.QDRANT, ConfigurationOption.HTTPS) == "true",
+            pool_size=1000,
         )
 
     @overload
