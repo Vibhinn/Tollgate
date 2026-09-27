@@ -22,8 +22,11 @@ class BadRequestToModel(Exception):
 class APIError(Exception):
     pass
 
-class SemanticCacheNotReachable(Exception):
+class CacheNotReachable(Exception):
     pass
 
-class KVCacheNotReachable(Exception):
+class SemanticCacheNotReachable(CacheNotReachable):
+    pass
+
+class KVCacheNotReachable(CacheNotReachable):
     pass
