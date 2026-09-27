@@ -1,0 +1,27 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.sonar
+.idea
+.DS_Store
+
+tests/
+k6/
+results/
+docker/docker-compose.yml
+tollgate.egg-info/
+
+# Local dev secrets/state - never bake these into the image
+config.yaml
+.tollgate.key
+.coverage
+coverage.xml
+
+# Downloaded model/binary - fetched at `tollgate init` time instead
+src/app/intelligence/model/*.gguf
+src/app/intelligence/server/llama-server*

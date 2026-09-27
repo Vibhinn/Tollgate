@@ -149,7 +149,7 @@ curl -X POST http://localhost:13000/api/v1/chat/completions \
 
 ```bash
 # Start Redis and Qdrant
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.local.yml up -d
 
 # Install dependencies
 pip install -r requirements.txt
@@ -205,7 +205,10 @@ Tollgate/
 ├── main.py                    # FastAPI app, lifespan, route registration
 ├── config.ini                 # API keys, rate limiter config
 ├── docker/
-│   └── docker-compose.yml     # Redis + Qdrant
+│   ├── Dockerfile             # Tollgate image, published to ghcr.io/vibhinn/tollgate
+│   ├── docker-compose.yml     # Runs the published image (no bundled Redis/Qdrant)
+│   ├── docker-compose.local.yml  # Local dev only: Redis + Qdrant (gitignored)
+│   └── entrypoint.sh
 └── src/
     ├── app/
     │   ├── adapters/           # ChatAdapter, RouterAdapter, TokenAdapter

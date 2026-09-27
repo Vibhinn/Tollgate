@@ -13,15 +13,12 @@ from rich.progress import (
 )
 
 from ..ui import console, step_header, success, info
+from src.app.intelligence.paths import server_dir as _server_dir
 
 RELEASE_TAG = "llama-server-v1"
 _RELEASE_BASE_URL = f"https://github.com/Vibhinn/tollgate-native/releases/download/{RELEASE_TAG}"
 
 BINARY_NAME = "llama-server.exe" if platform.system() == "Windows" else "llama-server"
-
-
-def _server_dir() -> Path:
-    return Path(__file__).parent.parent.parent / "src" / "app" / "intelligence" / "server"
 
 
 def _asset_name() -> str:

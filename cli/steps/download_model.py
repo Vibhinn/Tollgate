@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import requests
 from rich.progress import (
     BarColumn,
@@ -10,16 +8,13 @@ from rich.progress import (
 )
 
 from ..ui import console, step_header, success, warn, info
+from src.app.intelligence.paths import model_dir as _model_dir
 
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
 _MODEL_URL = (
     f"https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/{MODEL_FILENAME}?download=true"
 )
-
-
-def _model_dir() -> Path:
-    return Path(__file__).parent.parent.parent / "src" / "app" / "intelligence" / "model"
 
 
 def run(config: dict) -> dict:

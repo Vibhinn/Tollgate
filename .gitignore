@@ -14,6 +14,7 @@ coverage.xml
 htmlcov/
 k6/
 results/
+docker/docker-compose.local.yml
 memory.bin
 memray-flamegraph-memory.html
 memray-flamegraph-new_memory.html

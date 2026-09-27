@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import subprocess
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import httpx
 from openai import AsyncOpenAI
 
+from src.app.intelligence.paths import model_dir, server_dir
 from src.utils.types import ApplicationRepositoryType, VectorRepositoryCollection
 
 if TYPE_CHECKING:
@@ -45,8 +45,8 @@ _READINESS_TIMEOUT_SECONDS = 30
 
 class RoutingIntelligenceLayer:
     def __init__(self, repo_factory: ApplicationRepositoryFactory):
-        model_path = Path(__file__).parent / "model" / MODEL_FILENAME
-        server_binary = Path(__file__).parent / "server" / SERVER_BINARY_NAME
+        model_path = model_dir() / MODEL_FILENAME
+        server_binary = server_dir() / SERVER_BINARY_NAME
 
         self._server_process = subprocess.Popen([
             str(server_binary),
