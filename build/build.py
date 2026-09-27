@@ -140,7 +140,7 @@ class Builder:
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     def __create_and_initialize_connections(self):
-        CacheConnection.initialize()
+        CacheConnection.initialize(self.config)
         LLMConnection.initialize(self.config)
         JobQueueConnection.initialize()
 

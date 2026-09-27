@@ -28,6 +28,8 @@ CONFIGURATION_SECTIONS = Literal[
     ConfigurationSection.EMBEDDING,
     ConfigurationSection.RATE_LIMITER,
     ConfigurationSection.GATEWAY,
+    ConfigurationSection.REDIS,
+    ConfigurationSection.QDRANT,
 ]
 CONFIGURATION_OPTIONS = Literal[
     ConfigurationOption.ENDPOINT,
@@ -37,6 +39,11 @@ CONFIGURATION_OPTIONS = Literal[
     ConfigurationOption.REFILL_RATE,
     ConfigurationOption.TIME_INTERVAL,
     ConfigurationOption.DEFAULT_MODEL,
+    ConfigurationOption.HOST,
+    ConfigurationOption.PORT,
+    ConfigurationOption.PASSWORD,
+    ConfigurationOption.TLS,
+    ConfigurationOption.HTTPS,
 ]
 CONFIGURATION_SUB_SECTIONS = Literal[
     ConfigurationSubSection.OPENAI,

@@ -104,6 +104,17 @@ def print_configuration() -> None:
     console.print(f"  Default model: [bold]{gateway.get('default_model', '-')}[/bold]")
     console.print(f"  Default temperature: [bold]{gateway.get('default_temperature', '-')}[/bold]")
     console.print(f"  Embedding model: [bold]{embedding.get('model_name', '-')}[/bold]")
+
+    redis_cfg = data.get("redis", {})
+    qdrant_cfg = data.get("qdrant", {})
+    console.print("\n[bold white]Redis[/bold white]")
+    console.print(f"  {redis_cfg.get('host', '-')}:{redis_cfg.get('port', '-')}"
+                  f"  [dim](password {'configured' if redis_cfg.get('password') != _NOT_CONFIGURED else 'not configured'}, "
+                  f"tls={redis_cfg.get('tls', 'false')})[/dim]")
+    console.print("\n[bold white]Qdrant[/bold white]")
+    console.print(f"  {qdrant_cfg.get('host', '-')}:{qdrant_cfg.get('port', '-')}"
+                  f"  [dim](api key {'configured' if qdrant_cfg.get('api_key') != _NOT_CONFIGURED else 'not configured'}, "
+                  f"https={qdrant_cfg.get('https', 'false')})[/dim]")
     console.print()
 
 
@@ -287,6 +298,52 @@ def _remove_self_hosted_model(data: dict) -> dict:
     return data
 
 
+def _change_redis(data: dict) -> dict:
+    current = data.get("redis", {})
+    info(f"Current: {current.get('host', '-')}:{current.get('port', '-')}, tls={current.get('tls', 'false')}")
+
+    host = Prompt.ask("\n  [bold cyan]Host[/bold cyan]", default=current.get("host", "localhost"))
+    port = Prompt.ask("  [bold cyan]Port[/bold cyan]", default=current.get("port", "6379"))
+    password_input = Prompt.ask(
+        "  [bold cyan]Password[/bold cyan] [dim](press Enter to leave unset)[/dim]",
+        password=True,
+        default="",
+    )
+    tls = Confirm.ask(
+        "  [bold cyan]Use TLS?[/bold cyan]",
+        default=current.get("tls") == "true",
+    )
+    password = encrypt_value(password_input) if password_input else _NOT_CONFIGURED
+
+    data["redis"] = {"host": host, "port": port, "password": password, "tls": str(tls).lower()}
+    success("Redis connection updated")
+    warn(_RESTART_NOTICE)
+    return data
+
+
+def _change_qdrant(data: dict) -> dict:
+    current = data.get("qdrant", {})
+    info(f"Current: {current.get('host', '-')}:{current.get('port', '-')}, https={current.get('https', 'false')}")
+
+    host = Prompt.ask("\n  [bold cyan]Host[/bold cyan]", default=current.get("host", "localhost"))
+    port = Prompt.ask("  [bold cyan]Port[/bold cyan]", default=current.get("port", "6333"))
+    api_key_input = Prompt.ask(
+        "  [bold cyan]API key[/bold cyan] [dim](press Enter to leave unset)[/dim]",
+        password=True,
+        default="",
+    )
+    https = Confirm.ask(
+        "  [bold cyan]Use HTTPS?[/bold cyan]",
+        default=current.get("https") == "true",
+    )
+    api_key = encrypt_value(api_key_input) if api_key_input else _NOT_CONFIGURED
+
+    data["qdrant"] = {"host": host, "port": port, "api_key": api_key, "https": str(https).lower()}
+    success("Qdrant connection updated")
+    warn(_RESTART_NOTICE)
+    return data
+
+
 _CHANGE_OPTIONS = {
     "1": ("Rate limiter setting", _change_rate_limiter),
     "2": ("Embedding model", _change_embedding_model),
@@ -294,6 +351,8 @@ _CHANGE_OPTIONS = {
     "4": ("Add or update a provider API key", _add_new_model),
     "5": ("Add or update a self-hosted model", _add_self_hosted_model),
     "6": ("Remove a self-hosted model", _remove_self_hosted_model),
+    "7": ("Redis connection", _change_redis),
+    "8": ("Qdrant connection", _change_qdrant),
 }
 
 

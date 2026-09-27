@@ -40,6 +40,8 @@ class ConfigurationSection(StrEnum):
     EMBEDDING = "embedding"
     RATE_LIMITER = "rate_limiter"
     GATEWAY = "gateway"
+    REDIS = "redis"
+    QDRANT = "qdrant"
 
 
 class ConfigurationOption(StrEnum):
@@ -50,6 +52,11 @@ class ConfigurationOption(StrEnum):
     REFILL_RATE = "refill_rate"
     TIME_INTERVAL = "time_interval"
     DEFAULT_MODEL = "default_model"
+    HOST = "host"
+    PORT = "port"
+    PASSWORD = "password"
+    TLS = "tls"
+    HTTPS = "https"
 
 
 class ConfigurationSubSection(StrEnum):

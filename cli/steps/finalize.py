@@ -33,6 +33,8 @@ def run(config: dict) -> dict:
         "embedding": {
             "model_name": config["embedding_model"],
         },
+        "redis": config["redis"],
+        "qdrant": config["qdrant"],
         "rate_limiter": config["rate_limiter"],
         "gateway": {
             "default_model": config["default_model"],
