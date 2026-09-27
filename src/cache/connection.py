@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import redis.asyncio as redis
 from qdrant_client import AsyncQdrantClient
 from typing import overload, Literal, TYPE_CHECKING

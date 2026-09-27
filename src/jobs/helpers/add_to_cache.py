@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from typing import override, TYPE_CHECKING
 from src.utils.types import CacheJobData, CacheType, VectorRepositoryCollection

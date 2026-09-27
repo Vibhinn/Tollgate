@@ -14,12 +14,6 @@ async def lifespan(app: FastAPI):
     scheduler: RedisStreamRepository = container.resolve(RedisStreamRepository)
     router_repository: RouterRepository = container.resolve(RouterRepository)
     db_migrations: BaseMigration = container.resolve(BaseMigration)
-    # Resolving RouterRepository above already constructs this transitively
-    # (RouterRepository -> RouterAdapter -> RoutingIntelligenceLayer), which
-    # is what we want - it spawns the llama-server subprocess and blocks
-    # until it's ready, here at startup rather than on some real user's
-    # first "smart" request. This second resolve just returns that same
-    # cached singleton, giving us a handle to shut it down cleanly below.
     routing_intelligence: RoutingIntelligenceLayer = container.resolve(RoutingIntelligenceLayer)
 
     await db_migrations.run_all()

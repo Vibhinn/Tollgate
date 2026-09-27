@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import overload, Literal, TYPE_CHECKING
 
 from .providers import providers, embedding_model

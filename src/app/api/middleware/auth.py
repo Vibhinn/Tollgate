@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
