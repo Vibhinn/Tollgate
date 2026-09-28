@@ -153,3 +153,16 @@ def test_initialize_raises_the_qdrant_connection_pool_above_the_default_of_100(f
 
     _, kwargs = qdrant_factory.call_args
     assert kwargs["pool_size"] > 100
+
+
+def test_initialize_uses_grpc_transport_for_qdrant(fake_config, monkeypatch):
+    monkeypatch.setattr(connection_module.redis, "Redis", MagicMock())
+    qdrant_factory = MagicMock()
+    monkeypatch.setattr(connection_module, "AsyncQdrantClient", qdrant_factory)
+
+    _redis_qdrant_config(fake_config)
+
+    CacheConnection.initialize(fake_config)
+
+    _, kwargs = qdrant_factory.call_args
+    assert kwargs["prefer_grpc"] is True
