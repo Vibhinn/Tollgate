@@ -2,7 +2,7 @@
 set -e
 
 if [ -f "config.yaml" ]; then
-    exec uvicorn main:app --app-dir /app --host 0.0.0.0 --port 13000
+    exec tollgate start
 fi
 
 echo ""

@@ -1,9 +1,5 @@
 FROM python:3.14-slim
 
-# cmake/git: needed at `tollgate init` time to clone and compile llama.cpp
-# natively on this exact machine (see cli/steps/build_server.py) - avoids the
-# whole class of cross-machine shared-library packaging bugs a prebuilt
-# binary distribution model kept hitting.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
@@ -23,6 +19,7 @@ COPY src/ ./src/
 RUN pip install --no-cache-dir .
 
 ENV TOLLGATE_DATA_DIR=/data/intelligence
+ENV TOLLGATE_APP_DIR=/app
 RUN mkdir -p /data && chown -R tollgate:tollgate /data /app
 WORKDIR /data
 VOLUME ["/data"]
