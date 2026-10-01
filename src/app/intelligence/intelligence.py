@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import os
 import subprocess
 import sys
 import time
@@ -39,6 +41,15 @@ _GRAMMAR = r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
 
 _DEGRADED_FALLBACK_CATEGORY = "SIMPLE"
 
+# llama-server threads a single generation across whatever cores are
+# available - on a small box (e.g. 2 vCPU) that's already using everything
+# there is. Letting concurrent cache-miss classifications pile on top of each
+# other doesn't add real throughput there, it just makes every one of them
+# slower by competing for the same cores - confirmed in production as CPU
+# p99 99.9% and every "smart" request timing out under chaos load. Override
+# for boxes with real spare cores to give to this.
+_CLASSIFIER_CONCURRENCY = int(os.environ.get("TOLLGATE_CLASSIFIER_CONCURRENCY", "1"))
+
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 SERVER_BINARY_NAME = "llama-server"
 SERVER_HOST = "127.0.0.1"
@@ -54,6 +65,7 @@ class RoutingIntelligenceLayer:
         self._server_process: subprocess.Popen | None = None
         self.client: AsyncOpenAI | None = None
         self._available = False
+        self._classify_semaphore = asyncio.Semaphore(_CLASSIFIER_CONCURRENCY)
 
         try:
             self._server_process = subprocess.Popen([
@@ -114,15 +126,16 @@ class RoutingIntelligenceLayer:
         if not self._available:
             return _DEGRADED_FALLBACK_CATEGORY
 
-        result = await self.client.chat.completions.create(
-            model="qwen",
-            messages=[
-                {"role": "system", "content": _CLASSIFICATION_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            max_tokens=10,
-            extra_body={"grammar": _GRAMMAR},
-        )
+        async with self._classify_semaphore:
+            result = await self.client.chat.completions.create(
+                model="qwen",
+                messages=[
+                    {"role": "system", "content": _CLASSIFICATION_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=10,
+                extra_body={"grammar": _GRAMMAR},
+            )
         model_response = result.choices[0].message.content.strip()
         await self.vector_cache_repo.save(request_embedding, VectorRepositoryCollection.INTELLIGENCE_CLASSIFIER_CACHE, user_message, model_response)
 

@@ -10,7 +10,7 @@ def make_classify_response(content: str):
     return response
 
 
-def make_layer(embedding_repo=None, vector_cache_repo=None, classify_response=None):
+def make_layer(embedding_repo=None, vector_cache_repo=None, classify_response=None, classify_concurrency=1):
     # Bypass __init__ entirely - it spawns a real llama-server subprocess and
     # blocks until it's ready, which has no place in a fast unit test.
     layer = RoutingIntelligenceLayer.__new__(RoutingIntelligenceLayer)
@@ -18,6 +18,7 @@ def make_layer(embedding_repo=None, vector_cache_repo=None, classify_response=No
     layer.vector_cache_repo = vector_cache_repo or AsyncMock()
     layer.client = AsyncMock()
     layer._available = True
+    layer._classify_semaphore = asyncio.Semaphore(classify_concurrency)
     if classify_response is not None:
         layer.client.chat.completions.create.return_value = make_classify_response(classify_response)
     return layer
@@ -71,16 +72,18 @@ async def test_classify_sends_the_grammar_as_an_extension_field():
     assert kwargs["max_tokens"] == 10
 
 
-async def test_classify_does_not_serialize_concurrent_cache_misses():
-    """The old in-process Llama object needed a lock to avoid crashing under
-    concurrent calls. That's llama-server's job now (a separate process with
-    its own slot-based concurrent request handling) - classify() itself must
-    not reintroduce any artificial serialization on this side."""
+async def test_classify_caps_concurrent_llm_calls_to_the_configured_limit():
+    """Regression test: llama-server threads a single generation across all
+    available cores, so on a small box (2 vCPU, the box this was diagnosed
+    on) letting concurrent classify() calls pile on top of each other isn't
+    real parallelism - it's cores thrashing between requests. Confirmed in
+    production as CPU p99 99.9% and every "smart" request timing out under
+    chaos load. classify() must bound how many LLM calls run at once."""
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
     vector_cache_repo.search.return_value = {}
-    layer = make_layer(embedding_repo, vector_cache_repo)
+    layer = make_layer(embedding_repo, vector_cache_repo, classify_concurrency=1)
 
     concurrent_calls = 0
     max_concurrent = 0
@@ -97,7 +100,34 @@ async def test_classify_does_not_serialize_concurrent_cache_misses():
 
     await asyncio.gather(*(layer.classify(f"query {i}") for i in range(5)))
 
-    assert max_concurrent == 5
+    assert max_concurrent == 1
+
+
+async def test_classify_respects_a_higher_configured_concurrency_cap():
+    """The cap is configurable (TOLLGATE_CLASSIFIER_CONCURRENCY) for boxes
+    with real spare cores - this isn't a hardcoded always-serialize."""
+    embedding_repo = AsyncMock()
+    embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
+    vector_cache_repo = AsyncMock()
+    vector_cache_repo.search.return_value = {}
+    layer = make_layer(embedding_repo, vector_cache_repo, classify_concurrency=3)
+
+    concurrent_calls = 0
+    max_concurrent = 0
+
+    async def fake_create(**kwargs):
+        nonlocal concurrent_calls, max_concurrent
+        concurrent_calls += 1
+        max_concurrent = max(max_concurrent, concurrent_calls)
+        await asyncio.sleep(0.05)
+        concurrent_calls -= 1
+        return make_classify_response("SIMPLE")
+
+    layer.client.chat.completions.create.side_effect = fake_create
+
+    await asyncio.gather(*(layer.classify(f"query {i}") for i in range(5)))
+
+    assert max_concurrent == 3
 
 
 def test_init_degrades_gracefully_instead_of_crashing_when_the_binary_cant_start():
