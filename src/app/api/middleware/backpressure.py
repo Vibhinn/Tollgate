@@ -12,6 +12,7 @@ from .exemptions import EXEMPT_PATHS
 from src.cache import RedisRepository
 from src.utils.config import Config
 from src.utils.types import ConfigurationSection, ConfigurationOption, RedisAtomicCounters
+from src.app.injector import container
 
 if TYPE_CHECKING:
     from src.app.ports import CacheRepositoryInterface
@@ -23,8 +24,9 @@ RETRY_AFTER_JITTER_SECONDS: int = 2
 class BackpressureMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
-        self.redis_repo: CacheRepositoryInterface = RedisRepository()
-        self.max_in_flight: int = int(Config().get_config(ConfigurationSection.BACKPRESSURE, ConfigurationOption.MAX_IN_FLIGHT))
+        self.redis_repo: CacheRepositoryInterface = container.resolve(RedisRepository)
+        self.configuration: Config = container.resolve(Config)
+        self.max_in_flight: int = int(self.configuration.get_config(ConfigurationSection.BACKPRESSURE, ConfigurationOption.MAX_IN_FLIGHT))
 
         @self.app.middleware("http")
         async def shed_load(request: Request, call_next):

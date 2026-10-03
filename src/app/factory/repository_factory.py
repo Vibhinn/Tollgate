@@ -9,19 +9,18 @@ if TYPE_CHECKING:
                             RankingRepositoryInterface)
     from src.utils.types import REPOSITORY_TYPE
 
-
-from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository
-from src.llm import Model2VecRepository
-from src.utils import singleton
 from src.utils.types import ApplicationRepositoryType
 
-@singleton
 class ApplicationRepositoryFactory:
-    def __init__(self):
-        self.__embedding_repo = Model2VecRepository()
-        self.__redis_repo = RedisRepository()
-        self.__vector_db_repo = QdrantRepository()
-        self.__ranking_repo = RedisRankingRepository()
+    def __init__(self,
+                 embedding_repo: VectorEmbeddingRepositoryInterface,
+                 redis_repo: CacheRepositoryInterface,
+                 vector_db_repo: VectorDBRepositoryInterface,
+                 ranking_repo: RankingRepositoryInterface):
+        self.__embedding_repo = embedding_repo
+        self.__redis_repo = redis_repo
+        self.__vector_db_repo = vector_db_repo
+        self.__ranking_repo = ranking_repo
 
         self.__repo_map = {
             ApplicationRepositoryType.EMBEDDING: self.__embedding_repo,

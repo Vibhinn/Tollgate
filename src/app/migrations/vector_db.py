@@ -5,9 +5,7 @@ from .base import BaseMigration
 from src.cache import CacheConnection
 from qdrant_client.models import VectorParams, Distance
 from src.utils.types import VECTOR_REPOSITORY_COLLECTIONS, CacheType
-from src.utils.decorators import throws_exception
 
-@throws_exception(ValueError)
 class CreateSemanticCacheCollection(BaseMigration):
     async def up(self):
         try:

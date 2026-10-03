@@ -6,8 +6,8 @@ from src.utils.types import ConfigurationSection, ConfigurationOption
 from .bucket import TokenBucket
 
 class RateLimiterStore:
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, config: Config):
+        self.config = config
 
         self.max_tokens = int(self.config.get_config(ConfigurationSection.RATE_LIMITER, ConfigurationOption.MAX_TOKENS))
         self.refill_rate = int(self.config.get_config(ConfigurationSection.RATE_LIMITER, ConfigurationOption.REFILL_RATE))

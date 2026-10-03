@@ -15,10 +15,12 @@ from src.llm.repository.model2vec_repository import Model2VecRepository
 def factory(monkeypatch):
     monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: MagicMock()))
     monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, p: MagicMock()))
-    ApplicationRepositoryFactory.reset()
-    instance = ApplicationRepositoryFactory()
-    yield instance
-    ApplicationRepositoryFactory.reset()
+    return ApplicationRepositoryFactory(
+        embedding_repo=Model2VecRepository(),
+        redis_repo=RedisRepository(),
+        vector_db_repo=QdrantRepository(),
+        ranking_repo=RedisRankingRepository(),
+    )
 
 
 def test_embedding_repo_is_model2vec_repository(factory):
@@ -42,6 +44,3 @@ def test_get_repo_returns_same_instance_on_repeated_calls(factory):
     second = factory.get_repo("exact_cache")
     assert first is second
 
-
-def test_factory_itself_is_a_singleton(factory):
-    assert ApplicationRepositoryFactory() is factory

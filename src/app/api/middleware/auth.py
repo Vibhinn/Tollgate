@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from .base import BaseMiddleware
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
+from src.app.injector import container
 
 if TYPE_CHECKING:
     from src.app.ports import CacheRepositoryInterface
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 class AuthenticationMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
-        self.redis_repo: CacheRepositoryInterface = RedisRepository()
+        self.redis_repo: CacheRepositoryInterface = container.resolve(RedisRepository)
         self.exempt_paths = EXEMPT_PATHS
 
         @self.app.middleware("http")

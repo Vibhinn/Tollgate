@@ -7,6 +7,9 @@ from fastapi.testclient import TestClient
 
 from src.app.api.middleware import backpressure as backpressure_module
 from src.app.api.middleware import BackpressureMiddleware
+from src.app.injector.dependency_container import DependencyContainer
+from src.cache import RedisRepository
+from src.utils.config import Config
 from src.utils.types import RedisAtomicCounters
 
 
@@ -37,16 +40,28 @@ class FakeConfig:
 
 
 @pytest.fixture
-def redis_repo(monkeypatch):
+def test_container(monkeypatch):
+    """Isolated container so fakes never leak into the app-wide one."""
+    test_container = DependencyContainer()
+    monkeypatch.setattr(backpressure_module, "container", test_container)
+    return test_container
+
+
+def register_config(test_container: DependencyContainer, max_in_flight: int):
+    test_container.register(Config, lambda: FakeConfig({"backpressure": {"max_in_flight": str(max_in_flight)}}))
+
+
+@pytest.fixture
+def redis_repo(test_container):
     repo = FakeCounterRepo()
-    monkeypatch.setattr(backpressure_module, "RedisRepository", lambda: repo)
+    test_container.register(RedisRepository, lambda: repo)
     return repo
 
 
 @pytest.fixture
-def build_client(redis_repo, monkeypatch):
+def build_client(redis_repo, test_container):
     def _build(max_in_flight: int = 2, handler=None):
-        monkeypatch.setattr(backpressure_module, "Config", lambda: FakeConfig({"backpressure": {"max_in_flight": str(max_in_flight)}}))
+        register_config(test_container, max_in_flight)
 
         app = FastAPI()
 
@@ -104,8 +119,8 @@ def test_slot_is_released_when_handler_raises(build_client, redis_repo):
     assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 0
 
 
-def test_concurrent_requests_beyond_limit_are_shed(redis_repo, monkeypatch):
-    monkeypatch.setattr(backpressure_module, "Config", lambda: FakeConfig({"backpressure": {"max_in_flight": "2"}}))
+def test_concurrent_requests_beyond_limit_are_shed(redis_repo, test_container):
+    register_config(test_container, max_in_flight=2)
     release = asyncio.Event()
 
     app = FastAPI()

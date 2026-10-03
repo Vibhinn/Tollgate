@@ -12,6 +12,7 @@ from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 
 from src.utils.types import RedisAtomicCounters
+from src.app.injector import container
 
 if TYPE_CHECKING:
     from src.app.ports import CacheRepositoryInterface
@@ -20,8 +21,8 @@ if TYPE_CHECKING:
 class RateLimitingMiddleware(BaseMiddleware):
     def __init__(self, app: FastAPI):
         self.app = app
-        self.rate_limiter = RateLimiterStore()
-        self.redis_repo: CacheRepositoryInterface = RedisRepository()
+        self.rate_limiter: RateLimiterStore = container.resolve(RateLimiterStore)
+        self.redis_repo: CacheRepositoryInterface = container.resolve(RedisRepository)
 
         @self.app.middleware("http")
         async def rate_limit(request: Request, call_next):

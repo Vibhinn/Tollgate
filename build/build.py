@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 
 from src.llm import LLMRepositoryFactory
 from src.llm import LLMConnection
+from src.llm import Model2VecRepository
 
 from src.router import RouterRepository
 
@@ -13,12 +14,12 @@ from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
-
+from src.app.api.limiter import RateLimiterStore
 from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
                                 APIKeyInvalidOrExpired, CreditExhaustion, RateLimitedFromModelProvider,
                                 ModelProviderServerError, APIError, BadRequestToModel)
 
-from src.cache import RedisRepository
+from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository
 
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository
@@ -28,7 +29,6 @@ from src.utils.config import Config
 from src.utils.types import ApplicationRepositoryType, RedisStreamName
 
 from src.cache import CacheConnection
-from src.utils.decorators import UndeclaredException
 
 from .installation import MiddlewareInstallation, APIRouterInstallation
 
@@ -42,12 +42,12 @@ class Builder:
 
     def build_and_initialize_app(self):
         self.__create_and_initialize_connections()
+        self.__register_dependencies()
 
         self.__install_middleware()
         self.__install_routers()
 
         self.__register_exception_handlers()
-        self.__register_dependencies()
         self.__setup_job_manager()
 
     def __install_middleware(self):
@@ -58,11 +58,21 @@ class Builder:
 
     @staticmethod
     def __register_dependencies():
-        container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
+        container.register(Model2VecRepository, lambda: Model2VecRepository())
+        container.register(QdrantRepository, lambda: QdrantRepository())
+        container.register(RedisRankingRepository, lambda: RedisRankingRepository())
+
+        container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory(
+                                                                        container.resolve(Model2VecRepository),
+                                                                        container.resolve(RedisRepository),
+                                                                        container.resolve(QdrantRepository),
+                                                                        container.resolve(RedisRankingRepository)))
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory(
                                                                         container.resolve(Config)))
 
         container.register(RedisRepository, lambda: RedisRepository())
+        container.register(RateLimiterStore, lambda: RateLimiterStore(
+                                                                        container.resolve(Config)))
 
         container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory),
                                                                         container.resolve(RouterAdapter),
@@ -137,10 +147,6 @@ class Builder:
 
         @self.app.exception_handler(BadRequestToModel)
         async def handle_bad_request(request, exc):
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
-
-        @self.app.exception_handler(UndeclaredException)
-        async def handle_undeclared_exception(request, exc):
             return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     def __create_and_initialize_connections(self):

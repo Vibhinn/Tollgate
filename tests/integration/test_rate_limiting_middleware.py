@@ -6,6 +6,9 @@ from fastapi.testclient import TestClient
 
 from src.app.api.middleware import rate_limiting as rate_limiting_module
 from src.app.api.middleware import RateLimitingMiddleware
+from src.app.api.limiter import RateLimiterStore
+from src.app.injector.dependency_container import DependencyContainer
+from src.cache import RedisRepository
 
 
 class FakeBucket:
@@ -26,17 +29,25 @@ class FakeBucket:
 
 
 @pytest.fixture
-def redis_repo(monkeypatch):
+def test_container(monkeypatch):
+    """Isolated container so fakes never leak into the app-wide one."""
+    test_container = DependencyContainer()
+    monkeypatch.setattr(rate_limiting_module, "container", test_container)
+    return test_container
+
+
+@pytest.fixture
+def redis_repo(test_container):
     repo = AsyncMock()
     repo.get_user_id.return_value = "user-1"
-    monkeypatch.setattr(rate_limiting_module, "RedisRepository", lambda: repo)
+    test_container.register(RedisRepository, lambda: repo)
     return repo
 
 
 @pytest.fixture
-def rate_limiter_store(monkeypatch):
+def rate_limiter_store(test_container):
     store = MagicMock()
-    monkeypatch.setattr(rate_limiting_module, "RateLimiterStore", lambda: store)
+    test_container.register(RateLimiterStore, lambda: store)
     return store
 
 

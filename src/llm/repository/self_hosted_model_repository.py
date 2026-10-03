@@ -7,7 +7,6 @@ from src.app.ports import LLMRepositoryInterface
 from src.app.exceptions import (ModelProviderServerError, RateLimitedFromModelProvider,
                                  PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel,
                                 APIError)
-from src.utils.decorators import throws_exception
 from src.utils.types import LLMInvocationResult
 
 from ..connection import LLMConnection
@@ -19,8 +18,6 @@ class SelfHostedModelRepository(LLMRepositoryInterface):
         self.self_hosted_model_client = LLMConnection.get_connection(alias)
 
     @override
-    @throws_exception(ModelProviderServerError, RateLimitedFromModelProvider,
-                       PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel, APIError)
     async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
         try:
             stream = await self.self_hosted_model_client.chat.completions.create( #type: ignore

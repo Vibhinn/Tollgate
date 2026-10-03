@@ -6,12 +6,22 @@ from fastapi.testclient import TestClient
 
 from src.app.api.middleware import auth as auth_module
 from src.app.api.middleware import AuthenticationMiddleware
+from src.app.injector.dependency_container import DependencyContainer
+from src.cache import RedisRepository
 
 
 @pytest.fixture
-def redis_repo(monkeypatch):
+def test_container(monkeypatch):
+    """Isolated container so fakes never leak into the app-wide one."""
+    test_container = DependencyContainer()
+    monkeypatch.setattr(auth_module, "container", test_container)
+    return test_container
+
+
+@pytest.fixture
+def redis_repo(test_container):
     repo = AsyncMock()
-    monkeypatch.setattr(auth_module, "RedisRepository", lambda: repo)
+    test_container.register(RedisRepository, lambda: repo)
     return repo
 
 

@@ -4,9 +4,8 @@ from src.app.api.limiter import RateLimiterStore
 
 
 @pytest.fixture
-def store(monkeypatch, fake_config):
-    monkeypatch.setattr("src.app.api.limiter.store.Config", lambda: fake_config)
-    return RateLimiterStore()
+def store(fake_config):
+    return RateLimiterStore(fake_config)
 
 
 def test_reads_bucket_parameters_from_config(store, fake_config):
