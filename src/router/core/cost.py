@@ -17,15 +17,7 @@ async def get_cheapest_model(llm_repo_factory: LLMRepositoryFactory, ranking_rep
         if model_name in PRICING_TABLE and llm_repo_factory.get_repo(entry["provider"]) is not None
     ]
 
-    # "configured" only means the provider has an API key on file, not that it
-    # currently works - a model whose provider just started failing (credits
-    # exhausted, key revoked) stays out of consideration until its TTL clears,
-    # instead of being recommended forever with no way to recover without a
-    # human manually intervening.
-    available_models = [
-        model_name for model_name in configured_models
-        if not await ranking_repo.is_unavailable(model_name)
-    ]
+    available_models = await ranking_repo.filter_available(configured_models)
 
     if not available_models:
         return None

@@ -19,13 +19,10 @@ CATEGORY_MODEL_PREFERENCE = {
 async def resolve_smart_model(
     category: str, llm_repo_factory: LLMRepositoryFactory, ranking_repo: RankingRepositoryInterface
 ) -> str | None:
-    for model_name in CATEGORY_MODEL_PREFERENCE.get(category, []):
-        entry = ROUTING_TABLE.get(model_name)
-        if not entry:
-            continue
-        if llm_repo_factory.get_repo(entry["provider"]) is None:
-            continue
-        if await ranking_repo.is_unavailable(model_name):
-            continue
-        return model_name
-    return None
+    configured_models = [
+        model_name for model_name in CATEGORY_MODEL_PREFERENCE.get(category, [])
+        if model_name in ROUTING_TABLE and llm_repo_factory.get_repo(ROUTING_TABLE[model_name]["provider"]) is not None
+    ]
+
+    available_models = await ranking_repo.filter_available(configured_models)
+    return available_models[0] if available_models else None

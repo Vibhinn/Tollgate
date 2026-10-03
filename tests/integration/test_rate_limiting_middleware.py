@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.app.api.middleware import rate_limiting as rate_limiting_module
-from src.app.api.middleware import RateLimitingMiddleware
+from src.app.api.middleware import auth as auth_module
+from src.app.api.middleware import RateLimitingMiddleware, AuthenticationMiddleware
 from src.app.api.limiter import RateLimiterStore
 from src.app.injector.dependency_container import DependencyContainer
 from src.cache import RedisRepository
@@ -66,7 +67,7 @@ def build_client(redis_repo, rate_limiter_store):
         async def exempt():
             return {"ok": True}
 
-        RateLimitingMiddleware(app)
+        app.add_middleware(RateLimitingMiddleware)
         return TestClient(app)
 
     return _build
@@ -121,5 +122,27 @@ def test_bucket_is_looked_up_by_user_id_resolved_from_token(build_client, redis_
 
     client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 
+    redis_repo.get_user_id.assert_awaited_once_with("tg_good")
+    rate_limiter_store.get_user_bucket.assert_called_once_with("resolved-user-42")
+
+
+def test_auth_and_rate_limiting_together_look_the_token_up_once(redis_repo, rate_limiter_store, test_container, monkeypatch):
+    monkeypatch.setattr(auth_module, "container", test_container)
+    redis_repo.get_user_id.return_value = "resolved-user-42"
+    rate_limiter_store.get_user_bucket.return_value = FakeBucket(allowed=True)
+
+    app = FastAPI()
+
+    @app.get("/api/v1/chat/completions")
+    async def protected():
+        return {"ok": True}
+
+    # same order as production: auth runs first, rate limiting reuses its lookup
+    app.add_middleware(RateLimitingMiddleware)
+    app.add_middleware(AuthenticationMiddleware)
+
+    response = TestClient(app).get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
+
+    assert response.status_code == 200
     redis_repo.get_user_id.assert_awaited_once_with("tg_good")
     rate_limiter_store.get_user_bucket.assert_called_once_with("resolved-user-42")

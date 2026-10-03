@@ -22,5 +22,5 @@ class RankingRepositoryInterface(ABC):
         ...
 
     @abstractmethod
-    async def is_unavailable(self, model_name: str) -> bool:
+    async def filter_available(self, model_names: list[str]) -> list[str]:
         ...

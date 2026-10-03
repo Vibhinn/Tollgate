@@ -60,7 +60,7 @@ async def test_get_top_returns_none_when_ranking_is_empty(repo, redis_conn):
 
 async def test_get_top_available_returns_first_candidate_that_is_not_unavailable(repo, redis_conn):
     redis_conn.zrange.return_value = ["gpt-4o", "gpt-4o-mini", "claude-haiku-4-5"]
-    redis_conn.exists.side_effect = lambda key: 1 if key == "model:unavailable:gpt-4o" else 0
+    redis_conn.mget.return_value = ["1", None, None]
 
     result = await repo.get_top_available("model:ranking:latency", limit=10)
 
@@ -70,7 +70,7 @@ async def test_get_top_available_returns_first_candidate_that_is_not_unavailable
 
 async def test_get_top_available_returns_none_when_every_candidate_is_unavailable(repo, redis_conn):
     redis_conn.zrange.return_value = ["gpt-4o", "gpt-4o-mini"]
-    redis_conn.exists.return_value = 1
+    redis_conn.mget.return_value = ["1", "1"]
 
     result = await repo.get_top_available("model:ranking:latency")
 
@@ -83,7 +83,7 @@ async def test_get_top_available_returns_none_when_ranking_is_empty(repo, redis_
     result = await repo.get_top_available("model:ranking:latency")
 
     assert result is None
-    redis_conn.exists.assert_not_awaited()
+    redis_conn.mget.assert_not_awaited()
 
 
 async def test_mark_unavailable_sets_a_ttl_keyed_flag(repo, redis_conn):
@@ -92,9 +92,17 @@ async def test_mark_unavailable_sets_a_ttl_keyed_flag(repo, redis_conn):
     redis_conn.set.assert_awaited_once_with("model:unavailable:gpt-4o", "1", ex=600)
 
 
-async def test_is_unavailable_reflects_whether_the_flag_exists(repo, redis_conn):
-    redis_conn.exists.return_value = 1
-    assert await repo.is_unavailable("gpt-4o") is True
+async def test_filter_available_checks_every_model_in_one_round_trip_and_keeps_order(repo, redis_conn):
+    redis_conn.mget.return_value = [None, "1", None]
 
-    redis_conn.exists.return_value = 0
-    assert await repo.is_unavailable("gpt-4o") is False
+    result = await repo.filter_available(["gpt-4o", "gpt-4o-mini", "claude-haiku-4-5"])
+
+    redis_conn.mget.assert_awaited_once_with(
+        ["model:unavailable:gpt-4o", "model:unavailable:gpt-4o-mini", "model:unavailable:claude-haiku-4-5"]
+    )
+    assert result == ["gpt-4o", "claude-haiku-4-5"]
+
+
+async def test_filter_available_skips_redis_for_an_empty_list(repo, redis_conn):
+    assert await repo.filter_available([]) == []
+    redis_conn.mget.assert_not_awaited()

@@ -37,7 +37,7 @@ def client(redis_repo):
     async def exempt():
         return {"ok": True}
 
-    AuthenticationMiddleware(app)
+    app.add_middleware(AuthenticationMiddleware)
     return TestClient(app)
 
 
@@ -45,7 +45,7 @@ def test_exempt_path_bypasses_auth_entirely(client, redis_repo):
     response = client.post("/api/v1/chat/generate")
 
     assert response.status_code == 200
-    redis_repo.check_token_validity.assert_not_called()
+    redis_repo.get_user_id.assert_not_called()
 
 
 def test_missing_authorization_header_returns_401(client):
@@ -62,17 +62,17 @@ def test_non_bearer_authorization_header_returns_401(client):
 
 
 def test_invalid_token_returns_401(client, redis_repo):
-    redis_repo.check_token_validity.return_value = False
+    redis_repo.get_user_id.return_value = None
 
     response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_bad"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid token"}
-    redis_repo.check_token_validity.assert_awaited_once_with("tg_bad")
+    redis_repo.get_user_id.assert_awaited_once_with("tg_bad")
 
 
 def test_valid_token_allows_request_through(client, redis_repo):
-    redis_repo.check_token_validity.return_value = True
+    redis_repo.get_user_id.return_value = '{"requirement": "chat", "user_role": "user"}'
 
     response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 

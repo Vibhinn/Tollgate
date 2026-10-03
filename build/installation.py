@@ -8,7 +8,7 @@ class MiddlewareInstallation:
         middlewares = [RateLimitingMiddleware, AuthenticationMiddleware, BackpressureMiddleware]
         for middleware in middlewares:
             print("Installing middleware - ", middleware.__name__)
-            middleware(app)
+            app.add_middleware(middleware)
 
 class APIRouterInstallation:
     @staticmethod

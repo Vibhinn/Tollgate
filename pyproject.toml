@@ -13,7 +13,7 @@ dependencies = [
     "requests",
     "pyyaml",
     "fastapi>=0.136",
-    "uvicorn>=0.48",
+    "uvicorn[standard]>=0.48",
     "starlette>=1.1",
     "pydantic>=2.13",
     "redis>=7.4",

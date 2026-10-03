@@ -11,7 +11,7 @@ def make_factory(configured_providers):
 
 def make_ranking_repo(unavailable=frozenset()):
     ranking_repo = AsyncMock()
-    ranking_repo.is_unavailable.side_effect = lambda model_name: model_name in unavailable
+    ranking_repo.filter_available.side_effect = lambda model_names: [m for m in model_names if m not in unavailable]
     return ranking_repo
 
 

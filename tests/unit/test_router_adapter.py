@@ -9,7 +9,7 @@ from src.app.adapters.router_adapter import RouterAdapter
 def adapter():
     job_queue_manager = AsyncMock()
     ranking_repo = AsyncMock()
-    ranking_repo.is_unavailable.return_value = False
+    ranking_repo.filter_available.side_effect = lambda model_names: list(model_names)
     intelligence = AsyncMock()
     llm_repo_factory = MagicMock()
     return (
@@ -35,7 +35,7 @@ async def test_get_best_model_maps_cheap_to_cheapest_configured_model_by_pricing
 async def test_get_best_model_excludes_unavailable_models_from_cheap_pricing(adapter):
     router_adapter, _, ranking_repo, _, llm_repo_factory = adapter
     llm_repo_factory.get_repo = lambda provider: object() if provider == "openai" else None
-    ranking_repo.is_unavailable.side_effect = lambda model_name: model_name == "gpt-4o-mini"
+    ranking_repo.filter_available.side_effect = lambda model_names: [m for m in model_names if m != "gpt-4o-mini"]
 
     result = await router_adapter.get_best_model("cheap")
 
@@ -99,7 +99,7 @@ async def test_identify_model_intelligently_skips_a_blocklisted_preference(adapt
     router_adapter, _, ranking_repo, intelligence, llm_repo_factory = adapter
     intelligence.classify.return_value = "REASONING"
     llm_repo_factory.get_repo = lambda provider: object()
-    ranking_repo.is_unavailable.side_effect = lambda model_name: model_name == "claude-opus-4-6"
+    ranking_repo.filter_available.side_effect = lambda model_names: [m for m in model_names if m != "claude-opus-4-6"]
 
     result = await router_adapter.identify_model_intelligently("solve this equation")
 

@@ -75,7 +75,7 @@ def build_client(redis_repo, test_container):
         async def exempt():
             return {"ok": True}
 
-        BackpressureMiddleware(app)
+        app.add_middleware(BackpressureMiddleware)
         return TestClient(app, raise_server_exceptions=False)
 
     return _build
@@ -130,7 +130,7 @@ def test_concurrent_requests_beyond_limit_are_shed(redis_repo, test_container):
         await release.wait()
         return {"ok": True}
 
-    BackpressureMiddleware(app)
+    app.add_middleware(BackpressureMiddleware)
 
     async def run():
         import httpx

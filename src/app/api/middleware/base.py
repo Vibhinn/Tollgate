@@ -1,3 +1,6 @@
+TOKEN_VALUE_STATE_KEY = "user_id"
+
+
 class BaseMiddleware:
     registry = []
 

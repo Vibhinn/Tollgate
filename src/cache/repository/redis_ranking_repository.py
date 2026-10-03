@@ -22,13 +22,14 @@ class RedisRankingRepository(RankingRepositoryInterface):
 
     async def get_top_available(self, key: str, limit: int = 10) -> str | None:
         candidates = await self.cache_conn.zrange(key, 0, limit - 1)
-        for candidate in candidates:
-            if not await self.is_unavailable(candidate):
-                return candidate
-        return None
+        available = await self.filter_available(candidates)
+        return available[0] if available else None
 
     async def mark_unavailable(self, model_name: str, ttl: int) -> None:
         await self.cache_conn.set(f"{_UNAVAILABLE_KEY_PREFIX}{model_name}", "1", ex=ttl)
 
-    async def is_unavailable(self, model_name: str) -> bool:
-        return bool(await self.cache_conn.exists(f"{_UNAVAILABLE_KEY_PREFIX}{model_name}"))
+    async def filter_available(self, model_names: list[str]) -> list[str]:
+        if not model_names:
+            return []
+        flags = await self.cache_conn.mget([f"{_UNAVAILABLE_KEY_PREFIX}{name}" for name in model_names])
+        return [name for name, flag in zip(model_names, flags) if flag is None]
