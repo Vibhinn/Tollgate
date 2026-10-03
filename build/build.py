@@ -58,9 +58,13 @@ class Builder:
 
     @staticmethod
     def __register_dependencies():
+        container.register(Config, lambda : Config())
         container.register(Model2VecRepository, lambda: Model2VecRepository())
         container.register(QdrantRepository, lambda: QdrantRepository())
         container.register(RedisRankingRepository, lambda: RedisRankingRepository())
+        container.register(RedisRepository, lambda: RedisRepository())
+        container.register(BaseMigration, lambda: BaseMigration())
+
 
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory(
                                                                         container.resolve(Model2VecRepository),
@@ -70,7 +74,6 @@ class Builder:
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory(
                                                                         container.resolve(Config)))
 
-        container.register(RedisRepository, lambda: RedisRepository())
         container.register(RateLimiterStore, lambda: RateLimiterStore(
                                                                         container.resolve(Config)))
 
@@ -85,8 +88,6 @@ class Builder:
         container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
                                                                         container.resolve(ApplicationRepositoryFactory)))
 
-        container.register(Config, lambda : Config())
-
         container.register(RoutingIntelligenceLayer, lambda: RoutingIntelligenceLayer(
                                                                         container.resolve(ApplicationRepositoryFactory)))
 
@@ -95,8 +96,6 @@ class Builder:
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.RANKING),
                                                                         container.resolve(RoutingIntelligenceLayer),
                                                                         container.resolve(LLMRepositoryFactory)))
-
-        container.register(BaseMigration, lambda: BaseMigration())
 
     @staticmethod
     def __setup_job_manager():
