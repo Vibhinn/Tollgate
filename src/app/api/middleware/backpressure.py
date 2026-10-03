@@ -35,8 +35,8 @@ class BackpressureMiddleware(BaseMiddleware):
                 in_flight: int = await self.redis_repo.increment(RedisAtomicCounters.IN_FLIGHT)
             except Exception:
                 return JSONResponse(
-                    status_code=500,
-                    content={"content": "Internal Server Error. Sorry for the inconvenience"}
+                    status_code=503,
+                    content={"detail": "Temporary downstream outage"}
                 )
 
             if in_flight > self.max_in_flight:

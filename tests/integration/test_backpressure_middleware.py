@@ -145,13 +145,21 @@ def test_exempt_path_skips_backpressure(build_client, redis_repo):
     assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 5
 
 
-def test_redis_down_fails_open(build_client, redis_repo):
-    client = build_client(max_in_flight=1)
+def test_redis_down_fails_closed_without_reaching_the_handler(build_client, redis_repo):
+    handler_called = False
+
+    async def handler():
+        nonlocal handler_called
+        handler_called = True
+        return {"ok": True}
+
+    client = build_client(max_in_flight=1, handler=handler)
     redis_repo.fail = True
 
     response = client.get("/api/v1/chat/completions")
 
-    assert response.status_code == 200
+    assert response.status_code == 503
+    assert handler_called is False
 
 
 def test_max_in_flight_is_read_from_config(build_client, redis_repo):
