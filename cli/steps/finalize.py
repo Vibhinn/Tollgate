@@ -18,7 +18,7 @@ def _cleanup_tmp():
 
 
 def run(config: dict) -> dict:
-    step_header(7, "Writing Configuration", total=7)
+    step_header(8, "Writing Configuration", total=8)
 
     data = {
         "models": {
@@ -36,6 +36,7 @@ def run(config: dict) -> dict:
         "redis": config["redis"],
         "qdrant": config["qdrant"],
         "rate_limiter": config["rate_limiter"],
+        "backpressure": config["backpressure"],
         "gateway": {
             "default_model": config["default_model"],
             "default_temperature": config["default_temperature"],

@@ -7,7 +7,7 @@ __all__ = ["run", "verify_password"]
 
 
 def run(config: dict) -> dict:
-    step_header(4, "Admin Credentials", total=7)
+    step_header(4, "Admin Credentials", total=8)
 
     info("These credentials protect gateway administration. Store them safely.")
 

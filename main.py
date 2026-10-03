@@ -8,6 +8,8 @@ from src.jobs import RedisStreamRepository
 from src.app.migrations import BaseMigration
 from src.router import RouterRepository
 from src.app.intelligence import RoutingIntelligenceLayer
+from src.cache import RedisRepository
+from src.utils.types import RedisAtomicCounters
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,8 +17,10 @@ async def lifespan(app: FastAPI):
     router_repository: RouterRepository = container.resolve(RouterRepository)
     db_migrations: BaseMigration = container.resolve(BaseMigration)
     routing_intelligence: RoutingIntelligenceLayer = container.resolve(RoutingIntelligenceLayer)
+    redis_repository: RedisRepository = container.resolve(RedisRepository)
 
     await db_migrations.run_all()
+    await redis_repository.save(RedisAtomicCounters.IN_FLIGHT, 0)
     scheduler.start()
     await router_repository.warm_up_latency_rankings()
 

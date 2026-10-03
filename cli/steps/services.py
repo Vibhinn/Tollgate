@@ -134,7 +134,7 @@ def _collect_qdrant(config: dict) -> dict:
 
 
 def run(config: dict) -> dict:
-    step_header(3, "Infrastructure Services", total=7)
+    step_header(3, "Infrastructure Services", total=8)
 
     config = _collect_redis(config)
     config = _collect_qdrant(config)

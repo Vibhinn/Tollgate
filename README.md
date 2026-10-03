@@ -263,6 +263,7 @@ Cache hits come back with `"role": "model"`.
 | `422` | Request validation failed (e.g. missing `max_tokens`, unknown model name) |
 | `429` | Tollgate's rate limit (`Retry-After` and `X-RateLimit-*` headers included) or the provider's |
 | `500` | Provider outage / API error |
+| `503` | Gateway overloaded: more requests in flight than `backpressure.max_in_flight`. Has `Retry-After`. Change it with `tollgate config --change` |
 
 Swagger docs at `http://localhost:13000/docs`.
 

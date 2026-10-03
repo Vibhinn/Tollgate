@@ -18,6 +18,8 @@ from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
                                 APIKeyInvalidOrExpired, CreditExhaustion, RateLimitedFromModelProvider,
                                 ModelProviderServerError, APIError, BadRequestToModel)
 
+from src.cache import RedisRepository
+
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository
 from src.jobs.helpers import AddToCache, AnalyticsJobHelper
@@ -59,6 +61,8 @@ class Builder:
         container.register(ApplicationRepositoryFactory, lambda: ApplicationRepositoryFactory())
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory(
                                                                         container.resolve(Config)))
+
+        container.register(RedisRepository, lambda: RedisRepository())
 
         container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory),
                                                                         container.resolve(RouterAdapter),

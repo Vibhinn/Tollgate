@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from src.app.api.middleware import AuthenticationMiddleware, RateLimitingMiddleware
+from src.app.api import AuthenticationMiddleware, RateLimitingMiddleware, BackpressureMiddleware
 from src.app.api import chat_api_router, generate_access_token_router
 
 class MiddlewareInstallation:
     @staticmethod
     def install_middleware(app: FastAPI):
-        middlewares = [RateLimitingMiddleware, AuthenticationMiddleware]
+        middlewares = [RateLimitingMiddleware, AuthenticationMiddleware, BackpressureMiddleware]
         for middleware in middlewares:
             print("Installing middleware - ", middleware.__name__)
             middleware(app)

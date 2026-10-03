@@ -18,7 +18,7 @@ _MODEL_URL = (
 
 
 def run(config: dict) -> dict:
-    step_header(1, "Routing Intelligence Model", total=7)
+    step_header(1, "Routing Intelligence Model", total=8)
 
     model_dir = _model_dir()
     model_path = model_dir / MODEL_FILENAME

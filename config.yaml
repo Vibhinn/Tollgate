@@ -16,10 +16,22 @@ models:
       api_key: NOT_CONFIGURED
 embedding:
   model_name: minishlab/potion-base-8M
+redis:
+  host: localhost
+  port: '6379'
+  password: NOT_CONFIGURED
+  tls: 'false'
+qdrant:
+  host: localhost
+  port: '6333'
+  api_key: NOT_CONFIGURED
+  https: 'false'
 rate_limiter:
   max_tokens: '500'
   refill_rate: '100'
   time_interval: '1.0'
+backpressure:
+  max_in_flight: '50'
 gateway:
   default_model: gemini-3.5-flash-lite
   default_temperature: '0.7'

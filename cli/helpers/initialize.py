@@ -4,7 +4,7 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 
 from ..ui import console
-from ..steps import guardrail, download_model, build_server, services, admin_setup, providers, rate_limiting, finalize
+from ..steps import guardrail, download_model, build_server, services, admin_setup, providers, rate_limiting, backpressure, finalize
 
 def run_initialization_setup() -> None:
     from ..ui.console import print_banner
@@ -21,6 +21,7 @@ def run_initialization_setup() -> None:
         config = admin_setup.run(config)
         config = providers.run(config)
         config = rate_limiting.run(config)
+        config = backpressure.run(config)
         config = finalize.run(config)
 
     except KeyboardInterrupt:

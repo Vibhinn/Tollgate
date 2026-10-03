@@ -8,6 +8,7 @@ from rich.table import Table
 
 from ..ui import console, success, warn, error, info
 from ..steps.admin_setup import verify_password
+from ..steps.backpressure import ask_max_in_flight, DEFAULT_MAX_IN_FLIGHT
 from ..inputs.accepted_inputs import PROVIDERS
 from src.utils.crypto import decrypt_value, encrypt_value
 
@@ -98,6 +99,10 @@ def print_configuration() -> None:
         rl_table.add_row(key, str(value))
     console.print(rl_table)
 
+    max_in_flight = data.get("backpressure", {}).get("max_in_flight", "-")
+    console.print("\n[bold white]Backpressure[/bold white]")
+    console.print(f"  Max requests in flight: [bold]{max_in_flight}[/bold]")
+
     gateway = data.get("gateway", {})
     embedding = data.get("embedding", {})
     console.print("\n[bold white]Gateway[/bold white]")
@@ -153,6 +158,16 @@ def _change_rate_limiter(data: dict) -> dict:
         "time_interval": "1.0",
     }
     success("Rate limiter updated")
+    warn(_RESTART_NOTICE)
+    return data
+
+
+def _change_backpressure(data: dict) -> dict:
+    current = data.get("backpressure", {}).get("max_in_flight", DEFAULT_MAX_IN_FLIGHT)
+    info(f"Current max requests in flight: [bold]{current}[/bold]")
+
+    data["backpressure"] = {"max_in_flight": ask_max_in_flight(default=current)}
+    success(f"Backpressure set to [bold]{data['backpressure']['max_in_flight']}[/bold] requests in flight")
     warn(_RESTART_NOTICE)
     return data
 
@@ -353,6 +368,7 @@ _CHANGE_OPTIONS = {
     "6": ("Remove a self-hosted model", _remove_self_hosted_model),
     "7": ("Redis connection", _change_redis),
     "8": ("Qdrant connection", _change_qdrant),
+    "9": ("Backpressure (max requests in flight)", _change_backpressure),
 }
 
 

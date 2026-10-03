@@ -19,9 +19,9 @@ class CacheRepositoryInterface(ABC):
         ...
 
     @abstractmethod
-    async def increment(self, key: str) -> None:
+    async def increment(self, key: str) -> int:
         ...
 
     @abstractmethod
-    async def decrement(self, key: str) -> None:
+    async def decrement(self, key: str) -> int:
         ...

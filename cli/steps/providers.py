@@ -104,7 +104,7 @@ def _collect_self_hosted_models(config: dict) -> dict:
 
 
 def run(config: dict) -> dict:
-    step_header(5, "LLM Providers & API Keys", total=7)
+    step_header(5, "LLM Providers & API Keys", total=8)
 
     selected = _pick_providers()
     info(f"Selected: [bold]{', '.join(selected)}[/bold]")

@@ -55,7 +55,7 @@ def _clone_and_checkout(src_dir: Path) -> None:
 
 
 def run(config: dict) -> dict:
-    step_header(2, "Routing Intelligence Server", total=7)
+    step_header(2, "Routing Intelligence Server", total=8)
 
     server_dir = _server_dir()
     binary_path = server_dir / BINARY_NAME
