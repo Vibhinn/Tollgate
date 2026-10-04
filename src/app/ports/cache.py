@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class CacheRepositoryInterface(ABC):
     @abstractmethod
-    async def get_user_id(self, token: str) -> str:
+    async def get_user_id(self, token: str) -> str | None:
         ...
 
     @abstractmethod

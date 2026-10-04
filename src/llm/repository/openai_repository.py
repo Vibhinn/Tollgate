@@ -20,16 +20,16 @@ class OpenAIRepository(LLMRepositoryInterface):
     async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> LLMInvocationResult:
         optional_params = {"temperature": temperature} if temperature is not None else {}
         try:
-            response = await self.openai_client.chat.completions.create(
+            response = await self.openai_client.chat.completions.create( #type: ignore
                 model=model_name,
                 messages=UserRequestFormat.to_openai_messages(messages),
-                max_tokens=max_tokens,
+                max_completion_tokens=max_tokens,
                 **optional_params,
             )
             return LLMInvocationResult(
-                content=response.choices[0].message.content,
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
+                content=response.choices[0].message.content, #type: ignore
+                input_tokens=response.usage.prompt_tokens, #type: ignore
+                output_tokens=response.usage.completion_tokens, #type: ignore
             )
 
         except InternalServerError as e:

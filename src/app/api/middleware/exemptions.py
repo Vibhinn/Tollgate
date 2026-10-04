@@ -1,1 +1,1 @@
-EXEMPT_PATHS = {"/docs", "/openapi.json", "/api/v1/chat/generate"}
+EXEMPT_PATHS = {"/docs", "/openapi.json"}

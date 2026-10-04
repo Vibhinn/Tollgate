@@ -63,9 +63,6 @@ def build_client(redis_repo, rate_limiter_store):
         async def protected():
             return {"ok": True}
 
-        @app.post("/api/v1/chat/generate")
-        async def exempt():
-            return {"ok": True}
 
         app.add_middleware(RateLimitingMiddleware)
         return TestClient(app)
@@ -76,7 +73,7 @@ def build_client(redis_repo, rate_limiter_store):
 def test_exempt_path_bypasses_rate_limiting(build_client, redis_repo):
     client = build_client(FakeBucket(allowed=False))
 
-    response = client.post("/api/v1/chat/generate")
+    response = client.get("/docs")
 
     assert response.status_code == 200
     redis_repo.get_user_id.assert_not_called()

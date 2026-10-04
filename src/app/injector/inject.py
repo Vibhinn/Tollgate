@@ -2,7 +2,7 @@ from src.cache.keys import CacheKeyBuilder
 from src.utils.config import Config
 from src.app.injector import container
 
-from ..adapters import ChatAdapter, GenerateAccessTokenAdapter
+from ..adapters import ChatAdapter
 
 
 def get_chat_adapter() -> ChatAdapter:
@@ -10,9 +10,6 @@ def get_chat_adapter() -> ChatAdapter:
 
 def get_config_object() -> Config:
     return container.resolve(Config)
-
-def get_generate_token_adapter() -> GenerateAccessTokenAdapter:
-    return container.resolve(GenerateAccessTokenAdapter)
 
 def get_cache_key_builder() -> CacheKeyBuilder:
     return CacheKeyBuilder()

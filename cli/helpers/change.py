@@ -22,7 +22,7 @@ _RESTART_NOTICE = (
 )
 
 
-def _require_config() -> dict:
+def require_config() -> dict:
     if not _CONFIG_PATH.exists():
         error("No config.yaml found. Run [bold]tollgate init[/bold] first.")
         sys.exit(1)
@@ -40,7 +40,7 @@ def _write_config(data: dict) -> None:
         raise
 
 
-def _verify_admin(data: dict) -> None:
+def verify_admin(data: dict) -> None:
     admin = data.get("admin", {})
     if not admin.get("password_hash"):
         error("No admin credentials found in config.yaml. Run [bold]tollgate init[/bold] first.")
@@ -66,7 +66,7 @@ def _verify_admin(data: dict) -> None:
 
 
 def print_configuration() -> None:
-    data = _require_config()
+    data = require_config()
 
     console.print("\n[bold white]Configured models[/bold white]")
     table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 2))
@@ -373,8 +373,8 @@ _CHANGE_OPTIONS = {
 
 
 def change_configuration() -> None:
-    data = _require_config()
-    _verify_admin(data)
+    data = require_config()
+    verify_admin(data)
 
     while True:
         console.print("[bold white]What would you like to change?[/bold white]\n")

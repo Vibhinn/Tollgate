@@ -2,7 +2,6 @@ import pytest
 from pydantic import ValidationError
 
 from src.app.api.validators import ChatModel
-from src.app.api.validators.generate import GenerateTokenRequest
 
 
 def base_chat_payload(**overrides):
@@ -77,31 +76,3 @@ def test_chat_model_rejects_invalid_message_role():
 def test_chat_model_requires_at_least_the_model_and_messages_fields():
     with pytest.raises(ValidationError):
         ChatModel(model="gpt-4o")
-
-
-def test_generate_token_request_accepts_valid_values():
-    req = GenerateTokenRequest(token_requirement="chat", role="user")
-    assert req.token_requirement == "chat"
-    assert req.role == "user"
-    assert req.lifetime == 1296000
-
-
-def test_generate_token_request_accepts_custom_lifetime():
-    req = GenerateTokenRequest(token_requirement="image", role="admin", lifetime=60, password="admin-password")
-    assert req.lifetime == 60
-
-
-def test_generate_token_request_rejects_admin_role_without_password():
-    with pytest.raises(ValidationError):
-        GenerateTokenRequest(token_requirement="chat", role="admin")
-
-
-@pytest.mark.parametrize("requirement", ["video", "", "CHAT"])
-def test_generate_token_request_rejects_invalid_requirement(requirement):
-    with pytest.raises(ValidationError):
-        GenerateTokenRequest(token_requirement=requirement, role="user")
-
-
-def test_generate_token_request_rejects_invalid_role():
-    with pytest.raises(ValidationError):
-        GenerateTokenRequest(token_requirement="chat", role="superadmin")

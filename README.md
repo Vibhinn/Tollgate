@@ -181,7 +181,7 @@ tollgate start          # serves on 0.0.0.0:13000
 | 1. Routing intelligence model | Downloads `qwen2.5-1.5b-instruct-q4_k_m.gguf` (~1 GB, once) |
 | 2. Routing intelligence server | Clones llama.cpp at a pinned commit and builds `llama-server` for your CPU |
 | 3. Services | Redis + Qdrant host/port/password/TLS. On localhost it tries to start them for you |
-| 4. Admin credentials | Username (encrypted) + password (hashed) — needed to mint admin tokens |
+| 4. Admin credentials | Username (encrypted) + password (hashed) — needed to create or revoke tokens and change config |
 | 5. Providers | Pick providers, paste API keys (encrypted), add self-hosted endpoints, choose a default model |
 | 6. Rate limiting | Sustained req/s and burst multiplier |
 | 7. Finalize | Writes `config.yaml` and the `.tollgate.key` encryption key (mode `600`) atomically |
@@ -197,21 +197,29 @@ tollgate config --change   # change a single setting (restart to apply)
 
 ### Making requests
 
-**1. Mint an access token**
+**1. Create an access token**
+
+Tokens are created by whoever runs the gateway, with the `tollgate` CLI on the gateway host. Every token belongs to a **team** and a **name** (a person or an app). Creating or revoking a token asks for the admin credentials set during `tollgate init`.
 
 ```bash
-curl -X POST http://localhost:13000/api/v1/chat/generate \
-  -H "Content-Type: application/json" \
-  -d '{"token_requirement": "chat"}'
-# → {"token": "tg_..."}
+tollgate token create --team payments --name alice
+tollgate token create --team payments --name invoice-bot --ttl never
+# → tg_...   (shown once; Tollgate stores only its hash)
+
+tollgate token list                         # ID, team, name, created, expires
+tollgate token list --team payments
+tollgate token revoke e72bb248c316          # by the ID from `list`, or the full token
+tollgate token revoke --team payments --name alice   # every token of alice
 ```
 
-| Field | Required | Default | Notes |
-|---|---|---|---|
-| `token_requirement` | yes | — | `"chat"`, `"image"` or `"audio"` |
-| `role` | no | `"user"` | `"user"` or `"admin"` |
-| `password` | for `admin` | — | The admin password set during `tollgate init` |
-| `lifetime` | no | `1296000` (15 days) | Token TTL in seconds |
+In Docker, prefix each command with `docker exec -it tollgate`.
+
+| Option | Default | Notes |
+|---|---|---|
+| `--team`, `--name` | required | Lowercase letters, digits and `-` |
+| `--ttl` | `90d` | e.g. `30d`, `12h`, or `never` |
+
+Tokens with the same team and name share one rate limit and one cache. Give each app or environment its own name (`invoice-bot`, `invoice-bot-staging`) to keep them separate. Two tokens for the same name are how you rotate a key: create the new one, switch your app over, revoke the old one.
 
 **2. Call the gateway with a policy...**
 
@@ -257,12 +265,13 @@ Cache hits come back with `"role": "model"`.
 
 | Code | Meaning |
 |---|---|
-| `401` | Missing / invalid token, or wrong admin password |
-| `403` | Provider denied access to that model |
+| `400` | The provider rejected the request (e.g. context too long, unsupported parameter) |
+| `401` | Missing, invalid, expired or revoked token |
 | `404` | Unknown model, provider not configured, or **no healthy model left for the policy** |
 | `422` | Request validation failed (e.g. missing `max_tokens`, unknown model name) |
 | `429` | Tollgate's rate limit (`Retry-After` and `X-RateLimit-*` headers included) or the provider's |
 | `500` | Provider outage / API error |
+| `502` | Tollgate's provider key is invalid, lacks access to the model, or is out of credit. Fix it with `tollgate config --change` |
 | `503` | Gateway overloaded: more requests in flight than `backpressure.max_in_flight`. Has `Retry-After`. Change it with `tollgate config --change` |
 
 Swagger docs at `http://localhost:13000/docs`.
@@ -300,20 +309,19 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 
 ### Load limits
 
-1. **One process, one event loop.** `tollgate start` runs a single uvicorn worker. Request handling, the Redis Streams worker and embedding calls all share it. You can't simply add workers (see 2 and 3).
+1. **One process, one event loop.** `tollgate start` runs a single uvicorn worker. Request handling, the Redis Streams worker and embedding calls all share it. You can't simply add workers (see 2).
 2. **The rate limiter is in-memory and per-process.** Buckets live in a Python dict, reset on restart, and aren't shared across processes or instances. Running two instances behind a load balancer doubles the effective limit.
-3. **Rate-limit buckets are per role, not per user.** The bucket key is what's stored behind the token (`{"requirement", "user_role"}`), so every `chat`/`user` token shares **one bucket**. In practice the configured limit is a gateway-wide limit for all regular users together.
-4. **`"smart"` routing is CPU-bound and serialized.** On a classifier cache miss, the prompt goes to a 1.5B model on CPU, one at a time by default. On a small box, concurrent `"smart"` traffic queues behind it. That's what drove the 60s timeouts in the chaos run. Classifier answers are cached in Qdrant (similarity ≥ 0.7), so repeat-ish prompts skip it.
-5. **Each process spawns its own `llama-server` on fixed port 8091.** A second instance on the same host can't start its classifier and drops to "degraded" mode, where every `"smart"` request routes as `SIMPLE`.
-6. **Every request pays for an embedding.** When the exact cache misses, the semantic lookup runs, even if the request didn't set `cache_type`. model2vec runs on the default thread pool, so it competes for CPU with everything else. `"smart"` computes a second embedding for the classifier cache.
-7. **Provider throttling reduces your choices.** A provider `429` benches that model for 30s. Under sustained load, models get benched faster than they come back. Once none are left, policy requests return `404` instead of waiting or returning `503`. That was most of the failures in the chaos and cache-stress runs.
-8. **Fallback goes one level deep.** If the fallback model also fails, the error goes straight back to the client.
-9. **Background jobs can be dropped.** Each stream is capped at ~1,000 entries (`MAXLEN ~1000`) and one consumer works through them in batches of 10. Under heavy write load, unprocessed cache and analytics jobs can be trimmed before they're handled. Jobs that fail 5 times move to `<stream>:dead`.
-10. **No streaming.** Responses are fully buffered before they're returned, so long generations hold a connection and memory for their whole duration.
-11. **The semantic cache grows forever.** Qdrant points have no TTL (`X-Cache-TTL` only applies to the exact cache), and nothing evicts them.
-12. **Connection pools are capped.** Redis allows 1,000 connections with 3s socket timeouts. Qdrant's gRPC pool also allows 1,000. A Redis stall longer than 3s fails auth for every request in flight.
-13. **Startup isn't free.** Boot waits up to 30s for `llama-server`, then sends a real 1-token request to every configured model (small, but real, provider spend on every restart).
-14. **No observability yet.** `/api/v1/metrics` is a stub and isn't mounted. Logging is `print`.
+3. **`"smart"` routing is CPU-bound and serialized.** On a classifier cache miss, the prompt goes to a 1.5B model on CPU, one at a time by default. On a small box, concurrent `"smart"` traffic queues behind it. That's what drove the 60s timeouts in the chaos run. Classifier answers are cached in Qdrant (similarity ≥ 0.7), so repeat-ish prompts skip it.
+4. **Each process spawns its own `llama-server` on fixed port 8091.** A second instance on the same host can't start its classifier and drops to "degraded" mode, where every `"smart"` request routes as `SIMPLE`.
+5. **Every request pays for an embedding.** When the exact cache misses, the semantic lookup runs, even if the request didn't set `cache_type`. model2vec runs on the default thread pool, so it competes for CPU with everything else. `"smart"` computes a second embedding for the classifier cache.
+6. **Provider throttling reduces your choices.** A provider `429` benches that model for 30s. Under sustained load, models get benched faster than they come back. Once none are left, policy requests return `404` instead of waiting or returning `503`. That was most of the failures in the chaos and cache-stress runs.
+7. **Fallback goes one level deep.** If the fallback model also fails, the error goes straight back to the client.
+8. **Background jobs can be dropped.** Each stream is capped at ~1,000 entries (`MAXLEN ~1000`) and one consumer works through them in batches of 10. Under heavy write load, unprocessed cache and analytics jobs can be trimmed before they're handled. Jobs that fail 5 times move to `<stream>:dead`.
+9. **No streaming.** Responses are fully buffered before they're returned, so long generations hold a connection and memory for their whole duration.
+10. **The semantic cache grows forever.** Qdrant points have no TTL (`X-Cache-TTL` only applies to the exact cache), and nothing evicts them.
+11. **Connection pools are capped.** Redis allows 1,000 connections with 3s socket timeouts. Qdrant's gRPC pool also allows 1,000. A Redis stall longer than 3s fails auth for every request in flight.
+12. **Startup isn't free.** Boot waits up to 30s for `llama-server`, then sends a real 1-token request to every configured model (small, but real, provider spend on every restart).
+13. **No observability yet.** `/api/v1/metrics` is a stub and isn't mounted. Logging is `print`.
 
 ### Functional gaps
 

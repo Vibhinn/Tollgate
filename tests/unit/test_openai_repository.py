@@ -39,7 +39,7 @@ async def test_invoke_normalizes_raw_sdk_response(openai_client):
     openai_client.chat.completions.create.assert_awaited_once_with(
         model="gpt-4o",
         messages=[{"role": "user", "content": "hello"}],
-        max_tokens=4096,
+        max_completion_tokens=4096,
     )
     assert result.content == "hi there"
     assert result.input_tokens == 12
@@ -71,7 +71,7 @@ async def test_invoke_sends_the_whole_conversation_and_temperature(openai_client
             {"role": "assistant", "content": "bonjour"},
             {"role": "user", "content": "how are you?"},
         ],
-        max_tokens=4096,
+        max_completion_tokens=4096,
         temperature=0.2,
     )
 

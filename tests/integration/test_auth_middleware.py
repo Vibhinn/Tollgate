@@ -33,16 +33,13 @@ def client(redis_repo):
     async def protected():
         return {"ok": True}
 
-    @app.post("/api/v1/chat/generate")
-    async def exempt():
-        return {"ok": True}
 
     app.add_middleware(AuthenticationMiddleware)
     return TestClient(app)
 
 
 def test_exempt_path_bypasses_auth_entirely(client, redis_repo):
-    response = client.post("/api/v1/chat/generate")
+    response = client.get("/docs")
 
     assert response.status_code == 200
     redis_repo.get_user_id.assert_not_called()
@@ -72,7 +69,7 @@ def test_invalid_token_returns_401(client, redis_repo):
 
 
 def test_valid_token_allows_request_through(client, redis_repo):
-    redis_repo.get_user_id.return_value = '{"requirement": "chat", "user_role": "user"}'
+    redis_repo.get_user_id.return_value = "user-1"
 
     response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 

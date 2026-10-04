@@ -11,7 +11,7 @@ from src.router import RouterRepository
 from src.app.adapters import RouterAdapter
 from src.app.intelligence import RoutingIntelligenceLayer
 from src.app.factory import ApplicationRepositoryFactory
-from src.app.adapters import ChatAdapter, GenerateAccessTokenAdapter
+from src.app.adapters import ChatAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
 from src.app.api.limiter import RateLimiterStore
@@ -39,6 +39,20 @@ class Builder:
     def __init__(self, app: FastAPI):
         self.app: FastAPI = app
         self.config = Config()
+        self._EXCEPTION_STATUS_CODES: dict[type[Exception], int] = {
+            ModelSemanticNotFound: 404,
+            BadRequestToModel: 400,
+            RateLimitedFromModelProvider: 429,
+            APIKeyInvalidOrExpired: 502,
+            PermissionDeniedForModel: 502,
+            CreditExhaustion: 502,
+            ModelProviderServerError: 500,
+            APIError: 500,
+        }
+
+    @property
+    def exception_map(self):
+        return self._EXCEPTION_STATUS_CODES
 
     def build_and_initialize_app(self):
         self.__create_and_initialize_connections()
@@ -85,8 +99,6 @@ class Builder:
                                                                         container.resolve(RedisStreamRepository),
                                                                         container.resolve(RouterRepository)))
 
-        container.register(GenerateAccessTokenAdapter, lambda: GenerateAccessTokenAdapter(
-                                                                        container.resolve(ApplicationRepositoryFactory)))
 
         container.register(RoutingIntelligenceLayer, lambda: RoutingIntelligenceLayer(
                                                                         container.resolve(ApplicationRepositoryFactory)))
@@ -116,43 +128,17 @@ class Builder:
         scheduler.register_helper(RedisStreamName.ANALYTICS, analytics_helper)
 
     def __register_exception_handlers(self):
-        @self.app.exception_handler(ModelSemanticNotFound)
-        async def handle_model_not_found(request, exc):
-            return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-        @self.app.exception_handler(PermissionDeniedForModel)
-        async def handle_model_permission_denied(request, exc):
-            return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-        @self.app.exception_handler(APIKeyInvalidOrExpired)
-        async def handle_api_key_expired(request, exc):
-            return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-        @self.app.exception_handler(CreditExhaustion)
-        async def handle_credit_exhaustion(request, exc):
-            return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-        @self.app.exception_handler(RateLimitedFromModelProvider)
-        async def handle_model_rate_limited(request, exc):
-            return JSONResponse(status_code=429, content={"detail": str(exc)})
-
-        @self.app.exception_handler(ModelProviderServerError)
-        async def handle_model_provider_outage(request, exc):
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
-
-        @self.app.exception_handler(APIError)
-        async def handle_api_error(request, exc):
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
-
-        @self.app.exception_handler(BadRequestToModel)
-        async def handle_bad_request(request, exc):
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
+        for exception_class, status_code in self._EXCEPTION_STATUS_CODES.items():
+            self.app.add_exception_handler(exception_class, self.status_handler(status_code))
 
     def __create_and_initialize_connections(self):
         CacheConnection.initialize(self.config)
         LLMConnection.initialize(self.config)
         JobQueueConnection.initialize()
 
-
-
+    @staticmethod
+    def status_handler(status_code: int):
+        async def handle(request, exc):
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+        return handle
 

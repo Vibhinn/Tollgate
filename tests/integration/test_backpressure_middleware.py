@@ -71,9 +71,6 @@ def build_client(redis_repo, test_container):
                 return await handler()
             return {"ok": True}
 
-        @app.post("/api/v1/chat/generate")
-        async def exempt():
-            return {"ok": True}
 
         app.add_middleware(BackpressureMiddleware)
         return TestClient(app, raise_server_exceptions=False)
@@ -154,7 +151,7 @@ def test_exempt_path_skips_backpressure(build_client, redis_repo):
     client = build_client(max_in_flight=1)
     redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] = 5
 
-    response = client.post("/api/v1/chat/generate")
+    response = client.get("/docs")
 
     assert response.status_code == 200
     assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 5
