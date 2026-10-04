@@ -28,7 +28,9 @@ def helper(monkeypatch):
 def make_payload(**overrides):
     payload = {
         "cache_type": "exact",
-        "user_message": "hello",
+        "exact_key": "cache:exact:abc",
+        "context_hash": "ctx",
+        "prompt": "hello",
         "model_response": "hi there",
         "timeout": 3600,
     }
@@ -47,7 +49,7 @@ async def test_exact_cache_type_saves_directly_without_embedding(helper):
 
     await adapter.execute(make_payload(cache_type="exact"))
 
-    exact_cache.save.assert_awaited_once_with(key="hello", value="hi there", timeout=3600)
+    exact_cache.save.assert_awaited_once_with(key="cache:exact:abc", value="hi there", timeout=3600)
     embedding_repo.create_vector_embeddings.assert_not_awaited()
     vector_cache.save.assert_not_awaited()
 
@@ -69,7 +71,7 @@ async def test_semantic_cache_type_embeds_then_saves_to_vector_db(helper):
     _, call_kwargs = qdrant_client.upsert.call_args
     assert call_kwargs["collection_name"] == VectorRepositoryCollection.SEMANTIC_CACHE
     point = call_kwargs["points"][0]
-    assert point.payload == {"user_message": "hello", "model_response": "hi there"}
+    assert point.payload == {"user_message": "hello", "model_response": "hi there", "context_hash": "ctx"}
     exact_cache.save.assert_not_awaited()
 
 

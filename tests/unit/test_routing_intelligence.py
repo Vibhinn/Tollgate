@@ -24,15 +24,13 @@ def make_layer(embedding_repo=None, vector_cache_repo=None, classify_response=No
     return layer
 
 
-async def test_classify_unwraps_a_cache_hit_to_the_plain_category_string():
-    """Regression test: QdrantRepository.search() wraps a hit as
-    {"response": <value>} - classify() used to return that whole dict
-    instead of the category string, crashing every downstream consumer
-    (resolve_smart_model) that expects a plain string."""
+async def test_classify_returns_a_cache_hit_as_the_plain_category_string():
+    """classify() must hand back the category string itself - downstream
+    consumers (resolve_smart_model) crash on anything else."""
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {"response": "REASONING"}
+    vector_cache_repo.search.return_value = "REASONING"
     layer = make_layer(embedding_repo, vector_cache_repo)
 
     result = await layer.classify("solve this equation")
@@ -45,7 +43,7 @@ async def test_classify_returns_a_plain_string_on_a_cache_miss_and_caches_it():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {}
+    vector_cache_repo.search.return_value = None
     layer = make_layer(embedding_repo, vector_cache_repo, classify_response="CREATIVE")
 
     result = await layer.classify("write me a poem")
@@ -62,7 +60,7 @@ async def test_classify_sends_the_grammar_as_an_extension_field():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {}
+    vector_cache_repo.search.return_value = None
     layer = make_layer(embedding_repo, vector_cache_repo, classify_response="SIMPLE")
 
     await layer.classify("what is the capital of Japan?")
@@ -82,7 +80,7 @@ async def test_classify_caps_concurrent_llm_calls_to_the_configured_limit():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {}
+    vector_cache_repo.search.return_value = None
     layer = make_layer(embedding_repo, vector_cache_repo, classify_concurrency=1)
 
     concurrent_calls = 0
@@ -109,7 +107,7 @@ async def test_classify_respects_a_higher_configured_concurrency_cap():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {}
+    vector_cache_repo.search.return_value = None
     layer = make_layer(embedding_repo, vector_cache_repo, classify_concurrency=3)
 
     concurrent_calls = 0
@@ -152,7 +150,7 @@ async def test_classify_falls_back_to_simple_when_classifier_unavailable():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {}
+    vector_cache_repo.search.return_value = None
     layer = make_layer(embedding_repo, vector_cache_repo)
     layer._available = False
     layer.client = None
@@ -168,7 +166,7 @@ async def test_classify_still_serves_cache_hits_when_classifier_unavailable():
     embedding_repo = AsyncMock()
     embedding_repo.create_vector_embeddings.return_value = "embedding-vector"
     vector_cache_repo = AsyncMock()
-    vector_cache_repo.search.return_value = {"response": "REASONING"}
+    vector_cache_repo.search.return_value = "REASONING"
     layer = make_layer(embedding_repo, vector_cache_repo)
     layer._available = False
     layer.client = None

@@ -40,7 +40,38 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
     result = await router_repository.invoke_model("gpt-4o", messages, 4096)
 
     assert result == "the answer"
-    llm_repo.invoke.assert_awaited_once_with("hello there", "gpt-4o", 4096)
+    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", 4096, None)
+
+
+async def test_invoke_model_passes_the_whole_conversation_and_temperature(router_repository, llm_repo_factory):
+    _, llm_repo = llm_repo_factory
+    messages = [
+        Message(role="system", content="Reply in French."),
+        Message(role="user", content="hi"),
+        Message(role="assistant", content="bonjour"),
+        Message(role="user", content="how are you?"),
+    ]
+
+    await router_repository.invoke_model("gpt-4o", messages, 4096, temperature=0.2)
+
+    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", 4096, 0.2)
+
+
+async def test_smart_fallback_classifies_the_last_user_message_not_the_last_message(
+    router_repository, router_adapter, llm_repo_factory
+):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.side_effect = [CreditExhaustion("no credits left"), make_model_response("fallback answer")]
+    router_adapter.identify_model_intelligently.return_value = "gpt-4o-mini"
+    messages = [
+        Message(role="user", content="prove this theorem"),
+        Message(role="assistant", content="Sure, the proof"),
+    ]
+
+    await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="smart", temperature=0.2)
+
+    router_adapter.identify_model_intelligently.assert_awaited_once_with("prove this theorem")
+    assert llm_repo.invoke.await_args_list[1].args == (messages, "gpt-4o-mini", 4096, 0.2)
 
 
 async def test_invoke_model_sends_the_real_provider_model_id_not_the_routing_alias(
@@ -61,7 +92,7 @@ async def test_invoke_model_sends_the_real_provider_model_id_not_the_routing_ali
 
     await router_repository.invoke_model("ollama-llama3", messages, 4096)
 
-    llm_repo.invoke.assert_awaited_once_with("hello there", "llama3", 4096)
+    llm_repo.invoke.assert_awaited_once_with(messages, "llama3", 4096, None)
 
     router_adapter.add_job_to_queue.assert_awaited_once()
     call_args, call_kwargs = router_adapter.add_job_to_queue.await_args
@@ -234,7 +265,7 @@ async def test_warm_up_latency_rankings_sends_a_minimal_probe_to_each_configured
     called_models = {call.args[1] for call in llm_repo.invoke.await_args_list}
     assert called_models == {"gpt-4o", "gpt-4o-mini"}
     for call in llm_repo.invoke.await_args_list:
-        assert call.args[0] == "Hi"
+        assert call.args[0] == [Message(role="user", content="Hi")]
         assert call.args[2] == 1
 
 
@@ -249,7 +280,7 @@ async def test_warm_up_latency_rankings_skips_unconfigured_models(router_reposit
 
     await router_repository.warm_up_latency_rankings()
 
-    llm_repo.invoke.assert_awaited_once_with("Hi", "gpt-4o", 1)
+    llm_repo.invoke.assert_awaited_once_with([Message(role="user", content="Hi")], "gpt-4o", 1, None)
 
 
 async def test_warm_up_latency_rankings_continues_past_a_failing_probe(router_repository, llm_repo_factory):

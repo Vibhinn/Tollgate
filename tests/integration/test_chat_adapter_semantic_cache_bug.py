@@ -13,6 +13,7 @@ import pytest
 from src.cache.connection import CacheConnection
 from src.cache.repository.qdrant_repository import QdrantRepository
 from src.app.adapters.chat_adapter import ChatAdapter
+from src.cache.keys import CacheKeys
 from src.utils.types import VectorRepositoryCollection
 
 
@@ -50,12 +51,11 @@ async def test_semantic_cache_miss_queries_qdrant_with_the_real_repository(
 
     adapter = ChatAdapter(repo_manager, AsyncMock(), AsyncMock())
 
-    result = await adapter.check_cache("hello", 0.9)
+    result = await adapter.check_cache(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
 
-    qdrant_network_client.query_points.assert_awaited_once_with(
-        collection_name=VectorRepositoryCollection.SEMANTIC_CACHE,
-        query=fake_embedding[0].tolist(),
-        limit=1,
-        score_threshold=0.9,
-    )
-    assert result == {}
+    call_kwargs = qdrant_network_client.query_points.await_args.kwargs
+    assert call_kwargs["collection_name"] == VectorRepositoryCollection.SEMANTIC_CACHE
+    assert call_kwargs["query"] == fake_embedding[0].tolist()
+    assert call_kwargs["query_filter"].must[0].match.value == "ctx"
+    assert call_kwargs["score_threshold"] == 0.9
+    assert result is None

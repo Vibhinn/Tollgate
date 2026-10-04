@@ -32,17 +32,18 @@ class AddToCache(BaseHelper):
 
         if cache_type == CacheType.EXACT:
             await self.exact_cache.save(
-                key=payload.get("user_message"),
+                key=payload.get("exact_key"),
                 value=payload.get("model_response"),
                 timeout=payload.get("timeout")
             )
 
         elif cache_type == CacheType.SEMANTIC:
-            embedding = await self.embedding_repo.create_vector_embeddings(payload.get("user_message"))
+            embedding = await self.embedding_repo.create_vector_embeddings(payload.get("prompt"))
             await self.vector_cache.save(
                 embedding=embedding,
                 collection=VectorRepositoryCollection.SEMANTIC_CACHE,
-                user_message=payload.get("user_message"),
+                context_hash=payload.get("context_hash"),
+                user_message=payload.get("prompt"),
                 model_response=payload.get("model_response")
             )
 

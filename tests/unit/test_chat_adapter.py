@@ -3,7 +3,10 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.app.adapters.chat_adapter import ChatAdapter
-from src.utils.types import VectorRepositoryCollection
+from src.cache.keys import CacheKeys
+from src.utils.types import VectorRepositoryCollection, Message
+
+KEYS = CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello")
 
 
 class FakeRepoManager:
@@ -40,10 +43,10 @@ async def test_check_cache_returns_exact_hit_without_querying_vector_db(build_ad
 
     adapter, _ = build_adapter(exact_cache=exact_cache, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello", 0.9)
+    result = await adapter.check_cache(KEYS, 0.9)
 
     assert result == "cached exact answer"
-    exact_cache.search.assert_awaited_once_with("hello")
+    exact_cache.search.assert_awaited_once_with("cache:exact:abc")
     vector_cache.search.assert_not_awaited()
 
 
@@ -57,25 +60,34 @@ async def test_check_cache_falls_back_to_semantic_search_on_exact_miss(build_ada
 
     adapter, _ = build_adapter(exact_cache=exact_cache, embedding=embedding_repo, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello", 0.9)
+    result = await adapter.check_cache(KEYS, 0.9)
 
     embedding_repo.create_vector_embeddings.assert_awaited_once_with("hello")
     vector_cache.search.assert_awaited_once_with(
-        VectorRepositoryCollection.SEMANTIC_CACHE, "embedding-vector", 0.9
+        VectorRepositoryCollection.SEMANTIC_CACHE, "embedding-vector", 0.9, context_hash="ctx"
     )
     assert result == "semantic answer"
 
 
-async def test_check_cache_returns_empty_when_both_layers_miss(build_adapter):
+async def test_check_cache_returns_none_when_both_layers_miss(build_adapter):
     exact_cache = AsyncMock()
-    exact_cache.search.return_value = ""
+    exact_cache.search.return_value = None
     vector_cache = AsyncMock()
-    vector_cache.search.return_value = {}
+    vector_cache.search.return_value = None
 
     adapter, _ = build_adapter(exact_cache=exact_cache, vector_cache=vector_cache)
 
-    result = await adapter.check_cache("hello", 0.9)
-    assert result == {}
+    result = await adapter.check_cache(KEYS, 0.9)
+    assert result is None
+
+
+async def test_check_cache_treats_a_cache_outage_as_a_miss(build_adapter):
+    exact_cache = AsyncMock()
+    exact_cache.search.side_effect = ConnectionError("redis down")
+
+    adapter, _ = build_adapter(exact_cache=exact_cache)
+
+    assert await adapter.check_cache(KEYS, 0.9) is None
 
 
 @pytest.mark.parametrize("policy", ["fast", "cheap", "smart"])
@@ -98,8 +110,25 @@ async def test_query_llm_routes_policy_models_through_router(build_adapter, samp
         assert call_kwargs["user_message"] is None
 
     router_manager.invoke_model.assert_awaited_once_with(
-        model_name="claude-haiku-4-5", messages=sample_messages, max_tokens=4096, model_selection_policy=policy
+        model_name="claude-haiku-4-5", messages=sample_messages, max_tokens=4096,
+        model_selection_policy=policy, temperature=None
     )
+
+
+async def test_smart_routing_classifies_the_last_user_message(build_adapter):
+    router_manager = AsyncMock()
+    router_manager.get_best_model.return_value = "claude-opus-4-6"
+    adapter, _ = build_adapter(router_manager=router_manager)
+    messages = [
+        Message(role="system", content="You are a tutor."),
+        Message(role="user", content="prove this theorem"),
+        Message(role="assistant", content="Sure, the proof"),
+    ]
+
+    await adapter.query_llm("smart", messages, 4096, temperature=0.3)
+
+    assert router_manager.get_best_model.await_args.kwargs["user_message"] == messages[1]
+    assert router_manager.invoke_model.await_args.kwargs["temperature"] == 0.3
 
 
 async def test_query_llm_rejects_literal_model_names(build_adapter, sample_messages):

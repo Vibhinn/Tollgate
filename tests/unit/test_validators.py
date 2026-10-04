@@ -26,9 +26,19 @@ def test_chat_model_rejects_unknown_model():
         ChatModel(**base_chat_payload(model="not-a-real-model"))
 
 
-def test_chat_model_default_temperature_is_0_7():
+def test_chat_model_temperature_defaults_to_none_so_the_provider_default_applies():
     chat = ChatModel(**base_chat_payload())
-    assert chat.temperature == 0.7
+    assert chat.temperature is None
+
+
+def test_chat_model_rejects_empty_messages():
+    with pytest.raises(ValidationError):
+        ChatModel(**base_chat_payload(messages=[]))
+
+
+def test_chat_model_rejects_a_conversation_without_a_user_message():
+    with pytest.raises(ValidationError, match="at least one user message"):
+        ChatModel(**base_chat_payload(messages=[{"role": "system", "content": "be nice"}]))
 
 
 @pytest.mark.parametrize("temperature", [-0.1, 2.1])

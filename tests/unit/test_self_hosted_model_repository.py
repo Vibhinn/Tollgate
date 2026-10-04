@@ -11,6 +11,9 @@ from src.app.exceptions import (
 )
 from src.llm.connection import LLMConnection
 from src.llm.repository.self_hosted_model_repository import SelfHostedModelRepository
+from src.utils.types import Message
+
+HELLO = [Message(role="user", content="hello")]
 
 
 class FakeAsyncStream:
@@ -68,7 +71,7 @@ def test_init_fetches_the_connection_registered_for_its_own_alias(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(self_hosted_client):
     repo = SelfHostedModelRepository("ollama-llama3")
 
-    result = await repo.invoke("hello", "llama3", 4096)
+    result = await repo.invoke(HELLO, "llama3", 4096)
 
     self_hosted_client.chat.completions.create.assert_awaited_once_with(
         model="llama3",
@@ -82,6 +85,27 @@ async def test_invoke_normalizes_raw_sdk_response(self_hosted_client):
     assert result.output_tokens == 34
 
 
+async def test_invoke_sends_developer_messages_as_system_for_local_servers(self_hosted_client):
+    messages = [
+        Message(role="developer", content="Reply in French."),
+        Message(role="user", content="hi"),
+        Message(role="assistant", content="bonjour"),
+        Message(role="user", content="how are you?"),
+    ]
+    repo = SelfHostedModelRepository("ollama-llama3")
+
+    await repo.invoke(messages, "llama3", 4096, temperature=0.2)
+
+    call_kwargs = self_hosted_client.chat.completions.create.call_args.kwargs
+    assert call_kwargs["messages"] == [
+        {"role": "system", "content": "Reply in French."},
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "bonjour"},
+        {"role": "user", "content": "how are you?"},
+    ]
+    assert call_kwargs["temperature"] == 0.2
+
+
 async def test_invoke_defaults_token_counts_to_zero_when_server_omits_usage(self_hosted_client):
     """Regression test: some self-hosted servers (e.g. a local Apple FM
     bridge) never send a usage chunk even while streaming - this must
@@ -93,7 +117,7 @@ async def test_invoke_defaults_token_counts_to_zero_when_server_omits_usage(self
     ])
     repo = SelfHostedModelRepository("apple-fm")
 
-    result = await repo.invoke("hello", "apple-fm-model", 1)
+    result = await repo.invoke(HELLO, "apple-fm-model", 1)
 
     assert result.content == "hi"
     assert result.input_tokens == 0
@@ -124,7 +148,7 @@ async def test_invoke_maps_provider_errors_to_domain_exceptions(
     repo = SelfHostedModelRepository("ollama-llama3")
 
     with pytest.raises(expected_domain_exception) as exc_info:
-        await repo.invoke("hello", "llama3", 4096)
+        await repo.invoke(HELLO, "llama3", 4096)
 
     assert exc_info.value.__cause__ is sdk_exception
 
@@ -137,6 +161,6 @@ async def test_invoke_maps_connection_error_to_api_error(self_hosted_client):
     repo = SelfHostedModelRepository("ollama-llama3")
 
     with pytest.raises(APIError) as exc_info:
-        await repo.invoke("hello", "llama3", 4096)
+        await repo.invoke(HELLO, "llama3", 4096)
 
     assert exc_info.value.__cause__ is sdk_exception

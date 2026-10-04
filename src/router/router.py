@@ -9,7 +9,7 @@ from src.app.exceptions import (
     ModelSemanticNotFound, APIKeyInvalidOrExpired, CreditExhaustion,
     PermissionDeniedForModel, RateLimitedFromModelProvider, ModelProviderServerError, APIError,
 )
-from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message
+from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message, last_user_message
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
@@ -34,7 +34,8 @@ class RouterRepository:
                                         APIError: 30,
                                     }
 
-    async def invoke_model(self, model_name: str, messages: list[Message], max_tokens: int, model_selection_policy: str | None = None) -> str:
+    async def invoke_model(self, model_name: str, messages: list[Message], max_tokens: int,
+                           model_selection_policy: str | None = None, temperature: float | None = None) -> str:
         model_entry = self.routing_table.get(model_name)
         if not model_entry:
             raise ModelSemanticNotFound(f"Sorry, no such model found: {model_name}")
@@ -49,7 +50,7 @@ class RouterRepository:
 
         try:
             start: float = time.monotonic()
-            model_response = await repository.invoke(messages[-1].content, real_model_name, max_tokens)
+            model_response = await repository.invoke(messages, real_model_name, max_tokens, temperature)
             latency_ms: float = (time.monotonic() - start)*1000
         except tuple(self._TTL_BY_EXCEPTION_MAP) as e:
             ttl: int = self._TTL_BY_EXCEPTION_MAP[type(e)]
@@ -60,13 +61,13 @@ class RouterRepository:
                 raise
 
             fallback_model = await self.get_best_model(
-                model_selection_policy, user_message=messages[-1] if model_selection_policy == "smart" else None
+                model_selection_policy, user_message=last_user_message(messages) if model_selection_policy == "smart" else None
             )
             if fallback_model is None or fallback_model == model_name:
                 #in case the model which is out, was the only best case
                 raise
 
-            return await self.invoke_model(fallback_model, messages, max_tokens, model_selection_policy=None)
+            return await self.invoke_model(fallback_model, messages, max_tokens, model_selection_policy=None, temperature=temperature)
 
         analytics_object = AnalyticsJobData(
             model_name=model_name,

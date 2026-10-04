@@ -5,9 +5,10 @@ from openai import BadRequestError, AuthenticationError, PermissionDeniedError, 
 from src.app.ports import LLMRepositoryInterface
 from src.app.exceptions import (ModelProviderServerError, RateLimitedFromModelProvider,
                                  PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel, APIError)
-from src.utils.types import LLMProvider, LLMInvocationResult
+from src.utils.types import LLMProvider, LLMInvocationResult, Message
 
 from ..connection import LLMConnection
+from ..formatting import UserRequestFormat
 
 
 class OpenAIRepository(LLMRepositoryInterface):
@@ -16,12 +17,14 @@ class OpenAIRepository(LLMRepositoryInterface):
         self.openai_client = LLMConnection.get_connection(LLMProvider.OPENAI)
 
     @override
-    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
+    async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> LLMInvocationResult:
+        optional_params = {"temperature": temperature} if temperature is not None else {}
         try:
             response = await self.openai_client.chat.completions.create(
                 model=model_name,
-                messages=[{"role": "user", "content": message}],
+                messages=UserRequestFormat.to_openai_messages(messages),
                 max_tokens=max_tokens,
+                **optional_params,
             )
             return LLMInvocationResult(
                 content=response.choices[0].message.content,

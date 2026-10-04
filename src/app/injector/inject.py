@@ -1,3 +1,4 @@
+from src.cache.keys import CacheKeyBuilder
 from src.utils.config import Config
 from src.app.injector import container
 
@@ -12,3 +13,6 @@ def get_config_object() -> Config:
 
 def get_generate_token_adapter() -> GenerateAccessTokenAdapter:
     return container.resolve(GenerateAccessTokenAdapter)
+
+def get_cache_key_builder() -> CacheKeyBuilder:
+    return CacheKeyBuilder()

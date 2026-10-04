@@ -9,9 +9,11 @@ if TYPE_CHECKING:
 
 class VectorDBRepositoryInterface(ABC):
     @abstractmethod
-    async def save(self, embedding: ndarray, collection: VECTOR_REPOSITORY_COLLECTIONS, user_message: str, model_response: str) -> None:
+    async def save(self, embedding: ndarray, collection: VECTOR_REPOSITORY_COLLECTIONS, user_message: str,
+                   model_response: str, context_hash: str | None = None) -> None:
         ...
 
     @abstractmethod
-    async def search(self, collection: VECTOR_REPOSITORY_COLLECTIONS, embedding: ndarray, score_threshold: float = 0.9) -> str:
+    async def search(self, collection: VECTOR_REPOSITORY_COLLECTIONS, embedding: ndarray,
+                     score_threshold: float = 0.9, context_hash: str | None = None) -> str | None:
         ...

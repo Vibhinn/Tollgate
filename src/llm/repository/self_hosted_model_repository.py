@@ -7,9 +7,10 @@ from src.app.ports import LLMRepositoryInterface
 from src.app.exceptions import (ModelProviderServerError, RateLimitedFromModelProvider,
                                  PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel,
                                 APIError)
-from src.utils.types import LLMInvocationResult
+from src.utils.types import LLMInvocationResult, Message
 
 from ..connection import LLMConnection
+from ..formatting import UserRequestFormat
 
 
 class SelfHostedModelRepository(LLMRepositoryInterface):
@@ -18,14 +19,16 @@ class SelfHostedModelRepository(LLMRepositoryInterface):
         self.self_hosted_model_client = LLMConnection.get_connection(alias)
 
     @override
-    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
+    async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> LLMInvocationResult:
+        optional_params = {"temperature": temperature} if temperature is not None else {}
         try:
             stream = await self.self_hosted_model_client.chat.completions.create( #type: ignore
                 model=model_name,
-                messages=[{"role": "user", "content": message}],
+                messages=UserRequestFormat.to_self_hosted_messages(messages),
                 max_tokens=max_tokens,
                 stream=True,
                 stream_options={"include_usage": True},
+                **optional_params,
             )
 
             content_parts: list[str] = []

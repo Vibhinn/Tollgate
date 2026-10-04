@@ -7,6 +7,13 @@ class Message(BaseModel):
     role: Literal["system", "developer", "user", "assistant"]
     content: str
 
+
+def last_user_message(messages: list[Message]) -> Message:
+    for message in reversed(messages):
+        if message.role == "user":
+            return message
+    raise ValueError("messages must contain at least one user message")
+
 @dataclass
 class LLMInvocationResult:
     content: str
@@ -15,7 +22,9 @@ class LLMInvocationResult:
 
 class CacheJobData(TypedDict):
     cache_type: CACHE_TYPE
-    user_message: str
+    exact_key: str
+    context_hash: str
+    prompt: str
     model_response: str
     timeout: int
 

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 from src.cache.connection import CacheConnection
 from src.cache.repository.qdrant_repository import QdrantRepository
@@ -35,6 +36,19 @@ async def test_save_upserts_point_with_embedding_and_payload(repo, qdrant_client
     assert point.payload == {"user_message": "hi there", "model_response": "hello!"}
 
 
+async def test_save_stores_the_context_hash_when_given(repo, qdrant_client, fake_embedding):
+    await repo.save(
+        embedding=fake_embedding,
+        collection="semantic_cache",
+        user_message="hi there",
+        model_response="hello!",
+        context_hash="abc123",
+    )
+
+    point = qdrant_client.upsert.call_args.kwargs["points"][0]
+    assert point.payload["context_hash"] == "abc123"
+
+
 async def test_search_returns_top_match_response(repo, qdrant_client, fake_embedding):
     match = SimpleNamespace(payload={"model_response": "the cached answer"})
     qdrant_client.query_points.return_value = SimpleNamespace(points=[match])
@@ -44,18 +58,28 @@ async def test_search_returns_top_match_response(repo, qdrant_client, fake_embed
     qdrant_client.query_points.assert_awaited_once_with(
         collection_name="semantic_cache",
         query=fake_embedding[0].tolist(),
+        query_filter=None,
         limit=1,
         score_threshold=0.9,
     )
-    assert result == {"response": "the cached answer"}
+    assert result == "the cached answer"
 
 
-async def test_search_returns_empty_dict_when_no_points_matched(repo, qdrant_client, fake_embedding):
+async def test_search_only_matches_points_with_the_same_context_hash(repo, qdrant_client, fake_embedding):
+    qdrant_client.query_points.return_value = SimpleNamespace(points=[])
+
+    await repo.search(collection="semantic_cache", embedding=fake_embedding, context_hash="abc123")
+
+    query_filter = qdrant_client.query_points.call_args.kwargs["query_filter"]
+    assert query_filter == Filter(must=[FieldCondition(key="context_hash", match=MatchValue(value="abc123"))])
+
+
+async def test_search_returns_none_when_no_points_matched(repo, qdrant_client, fake_embedding):
     qdrant_client.query_points.return_value = SimpleNamespace(points=[])
 
     result = await repo.search(collection="semantic_cache", embedding=fake_embedding)
 
-    assert result == {}
+    assert result is None
 
 
 async def test_search_uses_default_score_threshold(repo, qdrant_client, fake_embedding):

@@ -94,10 +94,10 @@ Tollgate resolves `"cheap"` → the lowest-cost model that is configured and cur
 
 | Layer | Backend | Match Strategy | Threshold |
 |---|---|---|---|
-| Exact | Redis | Exact text of the last user message | Identical queries |
-| Semantic | Qdrant + model2vec | Cosine similarity, 256-dim vectors | `cache_match_score` (default 0.9) |
+| Exact | Redis | Hash of the whole request: every message, model, temperature, user | Identical requests |
+| Semantic | Qdrant + model2vec | Cosine similarity on the last user message, only among entries with the same system prompt, history, model, temperature and user | `cache_match_score` (default 0.9) |
 
-Cache hits skip the LLM entirely. Semantic cache catches paraphrased duplicates that exact matching misses. Writes are opt-in per request via `cache_type` and happen asynchronously through Redis Streams, so they never add latency to the response.
+Cache hits skip the LLM entirely. Semantic cache catches paraphrased duplicates that exact matching misses. Entries are per user, so one user's cached answers are never served to another. Writes are opt-in per request via `cache_type` and happen asynchronously through Redis Streams, so they never add latency to the response.
 
 ### Model Selection
 
@@ -240,7 +240,7 @@ curl -X POST http://localhost:13000/api/v1/chat/completions \
 | `max_tokens` | yes | — | Passed through to the provider |
 | `cache_type` | no | none | `"EXACT"` or `"SEMANTIC"` — stores the response for future hits |
 | `cache_match_score` | no | `0.9` | Semantic similarity needed to count as a hit (0–1) |
-| `temperature` | no | `0.7` | Accepted but not yet forwarded to providers |
+| `temperature` | no | provider default | Sampling temperature, 0–2. Omit it for reasoning models, which reject non-default values |
 
 **Response**
 
@@ -317,9 +317,6 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 
 ### Functional gaps
 
-- **Only the last message is sent to the provider.** Earlier turns in `messages` are ignored, so there's no multi-turn context yet.
-- **The cache key is just the last user message.** It doesn't include the model or the user, so two different models, or two different users, asking the same thing share a cached answer.
-- **`temperature` isn't forwarded** to providers.
 - **The response shape isn't OpenAI-compatible yet** (`{"role", "message"}` instead of `choices[]`), so OpenAI SDKs can't use Tollgate as a drop-in `base_url`.
 - **`"cheap"` uses static list prices** from `pricing.py`, not observed spend. Self-hosted models aren't in the pricing table, so `"cheap"` never picks them.
 
@@ -350,7 +347,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 | 19 | OpenAI-compatible request **and response** shape (true drop-in) | 🔧 In Progress |
 | 20 | Redis-backed, per-user rate limiter (multi-instance safe) | 📋 Planned |
 | 21 | Multi-worker / horizontally scalable deployment | 📋 Planned |
-| 22 | Full conversation history + `temperature` passthrough | 📋 Planned |
+| 22 | Full conversation history + `temperature` passthrough | ✅ Done |
 | 23 | Per-token budget enforcement and cost caps | 📋 Planned |
 | 24 | Multi-tenant routing with isolated rate limits | 📋 Planned |
 

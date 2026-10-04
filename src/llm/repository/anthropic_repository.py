@@ -1,6 +1,7 @@
 from src.app.ports import LLMRepositoryInterface
-from src.utils.types import LLMProvider, LLMInvocationResult
+from src.utils.types import LLMProvider, LLMInvocationResult, Message
 from ..connection import LLMConnection
+from ..formatting import UserRequestFormat
 from src.app.exceptions import (ModelProviderServerError, RateLimitedFromModelProvider, CreditExhaustion, PermissionDeniedForModel,
                                 APIKeyInvalidOrExpired, BadRequestToModel, APIError)
 
@@ -10,17 +11,19 @@ class AnthropicRepository(LLMRepositoryInterface):
     def __init__(self):
         self.anthropic_client = LLMConnection.get_connection(LLMProvider.ANTHROPIC)
 
-    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
+    async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> LLMInvocationResult:
+        system_prompt, conversation = UserRequestFormat.to_anthropic_messages(messages)
+        optional_params = {}
+        if system_prompt is not None:
+            optional_params["system"] = system_prompt
+        if temperature is not None:
+            optional_params["temperature"] = temperature
         try:
             response = await self.anthropic_client.messages.create(
                 model=model_name,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": message,
-                    }
-                ],
-                max_tokens=max_tokens
+                messages=conversation,
+                max_tokens=max_tokens,
+                **optional_params,
             )
 
             return LLMInvocationResult(

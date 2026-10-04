@@ -6,9 +6,10 @@ from google.genai.errors import ClientError, ServerError
 from src.app.ports import LLMRepositoryInterface
 from src.app.exceptions import (ModelProviderServerError, RateLimitedFromModelProvider,
                                  PermissionDeniedForModel, APIKeyInvalidOrExpired, BadRequestToModel)
-from src.utils.types import LLMProvider, LLMInvocationResult
+from src.utils.types import LLMProvider, LLMInvocationResult, Message
 
 from ..connection import LLMConnection
+from ..formatting import UserRequestFormat
 
 class GeminiRepository(LLMRepositoryInterface):
     @override
@@ -21,12 +22,17 @@ class GeminiRepository(LLMRepositoryInterface):
         }
 
     @override
-    async def invoke(self, message: str, model_name: str, max_tokens: int) -> LLMInvocationResult:
+    async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> LLMInvocationResult:
+        system_instruction, contents = UserRequestFormat.to_gemini_messages(messages)
         try:
             response = await self.gemini_client.aio.models.generate_content(
                 model=model_name,
-                contents=message,
-                config=types.GenerateContentConfig(max_output_tokens=max_tokens),
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=temperature,
+                    system_instruction=system_instruction,
+                ),
             )
             return LLMInvocationResult(
                 content=response.text,

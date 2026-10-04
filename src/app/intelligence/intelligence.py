@@ -41,13 +41,6 @@ _GRAMMAR = r'root ::= "SIMPLE" | "CODE" | "REASONING" | "CREATIVE"'
 
 _DEGRADED_FALLBACK_CATEGORY = "SIMPLE"
 
-# llama-server threads a single generation across whatever cores are
-# available - on a small box (e.g. 2 vCPU) that's already using everything
-# there is. Letting concurrent cache-miss classifications pile on top of each
-# other doesn't add real throughput there, it just makes every one of them
-# slower by competing for the same cores - confirmed in production as CPU
-# p99 99.9% and every "smart" request timing out under chaos load. Override
-# for boxes with real spare cores to give to this.
 _CLASSIFIER_CONCURRENCY = int(os.environ.get("TOLLGATE_CLASSIFIER_CONCURRENCY", "1"))
 
 MODEL_FILENAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
@@ -121,7 +114,7 @@ class RoutingIntelligenceLayer:
                                                                     score_threshold=0.7)
 
         if answer_from_vector_db:
-            return answer_from_vector_db["response"]
+            return answer_from_vector_db
 
         if not self._available:
             return _DEGRADED_FALLBACK_CATEGORY

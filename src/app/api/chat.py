@@ -1,22 +1,34 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
-from ..injector import get_chat_adapter
+from ..injector import get_chat_adapter, get_cache_key_builder
 
 from ..adapters import ChatAdapter
 from .validators import ChatModel
+from .middleware.base import TOKEN_VALUE_STATE_KEY
+from src.cache.keys import CacheKeyBuilder
 from src.utils.types import CacheJobData, RedisStreamName
 
 chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 @chat_api_router.post(path="/chat/completions", tags=["chat"])
-async def chat_complete(request: Request, user_requirement: ChatModel, chat_adapter: ChatAdapter = Depends(get_chat_adapter)):
-    user_message: str = user_requirement.messages[-1].content
+async def chat_complete(request: Request, user_requirement: ChatModel,
+                        chat_adapter: ChatAdapter = Depends(get_chat_adapter),
+                        cache_key_builder: CacheKeyBuilder = Depends(get_cache_key_builder)):
+    
     requested_model: str = user_requirement.model
     cache_match_confidence: float = user_requirement.cache_match_score
     max_tokens: int = user_requirement.max_tokens
+    temperature: float | None = user_requirement.temperature
 
-    search_result = await chat_adapter.check_cache(user_message, cache_match_confidence)
+    cache_keys = cache_key_builder.build_cache_keys(
+        user_id=request.scope.get("state", {}).get(TOKEN_VALUE_STATE_KEY),
+        model=requested_model,
+        temperature=temperature,
+        messages=user_requirement.messages,
+    )
+
+    search_result = await chat_adapter.check_cache(cache_keys, cache_match_confidence)
     if search_result:
         return JSONResponse(
             status_code=200,
@@ -26,14 +38,17 @@ async def chat_complete(request: Request, user_requirement: ChatModel, chat_adap
             }
         )
 
-    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages, max_tokens=max_tokens)
+    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages,
+                                                  max_tokens=max_tokens, temperature=temperature)
 
     if user_requirement.cache_type:
         caching_timeout_header = request.headers.get("X-Cache-TTL")
         cache_timeout: int = int(caching_timeout_header) if caching_timeout_header else 3600
         job_data = CacheJobData(
             cache_type=user_requirement.cache_type,
-            user_message=user_message,
+            exact_key=cache_keys.exact_key,
+            context_hash=cache_keys.context_hash,
+            prompt=cache_keys.prompt,
             model_response=model_response,
             timeout=cache_timeout
         )
