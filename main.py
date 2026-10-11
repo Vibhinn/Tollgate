@@ -13,20 +13,21 @@ from src.utils.types import RedisAtomicCounters
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler: RedisStreamRepository = container.resolve(RedisStreamRepository)
-    router_repository: RouterRepository = container.resolve(RouterRepository)
-    db_migrations: BaseMigration = container.resolve(BaseMigration)
     routing_intelligence: RoutingIntelligenceLayer = container.resolve(RoutingIntelligenceLayer)
-    redis_repository: RedisRepository = container.resolve(RedisRepository)
+    try:
+        scheduler: RedisStreamRepository = container.resolve(RedisStreamRepository)
+        router_repository: RouterRepository = container.resolve(RouterRepository)
+        db_migrations: BaseMigration = container.resolve(BaseMigration)
+        redis_repository: RedisRepository = container.resolve(RedisRepository)
 
-    await db_migrations.run_all()
-    await redis_repository.save(RedisAtomicCounters.IN_FLIGHT, 0)
-    scheduler.start()
-    await router_repository.warm_up_latency_rankings()
+        await db_migrations.run_all()
+        await redis_repository.save(RedisAtomicCounters.IN_FLIGHT, 0)
+        scheduler.start()
+        await router_repository.warm_up_latency_rankings()
 
-    yield
-
-    routing_intelligence.shutdown()
+        yield
+    finally:
+        routing_intelligence.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)

@@ -73,6 +73,9 @@ class RoutingIntelligenceLayer:
             self.client = AsyncOpenAI(base_url=f"http://{SERVER_HOST}:{SERVER_PORT}/v1", api_key="not-required")
             self._available = True
         except (OSError, RuntimeError, TimeoutError) as exc:
+            # a server that started but never got ready would otherwise keep running and hold the port
+            self.shutdown()
+            self._server_process = None
             print(
                 f"WARNING: routing intelligence server failed to start ({exc}). "
                 f"\"smart\" routing will fall back to the {_DEGRADED_FALLBACK_CATEGORY} tier "

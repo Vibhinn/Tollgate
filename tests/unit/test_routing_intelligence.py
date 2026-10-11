@@ -181,3 +181,19 @@ def test_shutdown_is_a_noop_when_the_server_never_started():
     layer._server_process = None
 
     layer.shutdown()  # must not raise
+
+
+def test_init_stops_a_server_that_started_but_never_became_ready():
+    """Regression test: a llama-server that timed out was left running, holding
+    port 8091, so the next gateway start failed with "couldn't bind"."""
+    repo_factory = MagicMock()
+    repo_factory.get_repo.return_value = AsyncMock()
+    server_process = MagicMock()
+
+    with patch("src.app.intelligence.intelligence.subprocess.Popen", return_value=server_process), \
+         patch.object(RoutingIntelligenceLayer, "_wait_until_ready", side_effect=TimeoutError("not ready in 30s")):
+        layer = RoutingIntelligenceLayer(repo_factory)
+
+    server_process.terminate.assert_called_once()
+    assert layer._available is False
+    assert layer._server_process is None
