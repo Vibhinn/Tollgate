@@ -89,3 +89,4 @@ class RedisAtomicCounters(StrEnum):
     CACHE_EXACT_HITS = "cache_exact_hits"
     CACHE_SEMANTIC_HITS = "cache_semantic_hits"
     CACHE_MISSES = "cache_misses"
+    NO_MODEL_AVAILABLE = "no_model_available"

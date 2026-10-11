@@ -16,8 +16,9 @@ _MODEL_STAT_FIELDS = ("requests", "errors", "input_tokens", "output_tokens")
 
 # metrics:<kind>:<id> hashes, plus metrics:<kind>s sets to list them
 _ENTITY_KEY_PREFIX = "metrics:"
-ENTITY_FIELDS = ("requests", "2xx", "4xx", "5xx", "rate_limited", "cache_exact_hits", "cache_semantic_hits",
-                 "cache_misses", "input_tokens", "output_tokens")
+ENTITY_FIELDS = ("requests", "2xx", "4xx", "5xx", "rate_limited", "no_model_available", "cache_exact_hits",
+                 "cache_semantic_hits", "cache_misses", "input_tokens", "output_tokens")
+_NO_MODEL_AVAILABLE = "no_model_available"
 _MODEL_FIELD_PREFIX = "model:"          # per-model usage inside an entity hash: model:<name>:<stat>
 _TOKEN_DETAIL_FIELDS = ("team", "name")
 
@@ -52,6 +53,9 @@ class RedisMetricsRepository(MetricsRepositoryInterface):
             pipe.incr(counter)
         if counter := _REJECTION_COUNTERS.get(event["rejected_by"]):
             pipe.incr(counter)
+        # events queued before error_code existed have no such field
+        if event.get("error_code") == _NO_MODEL_AVAILABLE:
+            pipe.incr(Counter.NO_MODEL_AVAILABLE)
 
         if event["team"] is not None:
             entities = (("team", event["team"]),
@@ -72,6 +76,8 @@ class RedisMetricsRepository(MetricsRepositoryInterface):
             pipe.hincrby(key, f"{status_class}xx", 1)
         if event["rejected_by"] == "rate_limit":
             pipe.hincrby(key, "rate_limited", 1)
+        if event.get("error_code") == _NO_MODEL_AVAILABLE:
+            pipe.hincrby(key, _NO_MODEL_AVAILABLE, 1)
         if field := _CACHE_FIELDS.get(event["cache_outcome"]):
             pipe.hincrby(key, field, 1)
         if event["model"]:

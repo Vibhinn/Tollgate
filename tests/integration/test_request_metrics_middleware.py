@@ -1,5 +1,6 @@
 import pytest
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from src.app.api.middleware import request_metrics as request_metrics_module
@@ -56,6 +57,11 @@ def client(job_queue):
     async def crash():
         raise RuntimeError("bug")
 
+    @app.get("/v1/no-model")
+    async def no_model(request: Request):
+        request.state.error_code = "no_model_available"   # what the error handler leaves
+        return JSONResponse(status_code=503, content={})
+
     @app.get("/api/v1/metrics")
     async def metrics():
         return {}
@@ -76,7 +82,7 @@ def test_an_answered_request_becomes_one_event_with_who_what_and_how_much(client
 
     event = only_event(job_queue)
     assert {key: value for key, value in event.items() if key != "timestamp"} == {
-        "kind": "request", "status": 200, "rejected_by": None, "cache_outcome": "miss", "model": "gpt-4o",
+        "kind": "request", "status": 200, "rejected_by": None, "error_code": None, "cache_outcome": "miss", "model": "gpt-4o",
         "input_tokens": 12, "output_tokens": 5, "team": "payments", "name": "alice", "token_id": "e72bb248c316",
     }
 
@@ -107,3 +113,10 @@ def test_a_metrics_outage_never_fails_the_request(client, job_queue):
     job_queue.fail = True
 
     assert client.get("/v1/answer").status_code == 200
+
+
+def test_the_error_code_a_request_ended_with_is_in_its_event(client, job_queue):
+    client.get("/v1/no-model")
+
+    event = only_event(job_queue)
+    assert (event["status"], event["error_code"]) == (503, "no_model_available")

@@ -12,8 +12,13 @@ def openai_error(status_code: int, message: str, error_type: str, code: str | No
     )
 
 
+# the error code a request ended with, for RequestMetricsMiddleware's event
+ERROR_CODE_STATE_KEY = "error_code"
+
+
 def status_handler(error_spec: ErrorSpec):
     async def handle(request, exc):
+        setattr(request.state, ERROR_CODE_STATE_KEY, error_spec.code)
         return openai_error(error_spec.status_code, str(exc), error_spec.type, error_spec.code,
                             headers=getattr(exc, "headers", None))
     return handle

@@ -8,8 +8,9 @@ from src.utils.types import RedisAtomicCounters as Counter
 
 
 def request_event(status=200, team="payments", name="alice", token_id="e72bb248c316", cache_outcome="miss",
-                  model="gpt-4o", input_tokens=100, output_tokens=20, rejected_by=None):
-    return {"kind": "request", "status": status, "rejected_by": rejected_by, "cache_outcome": cache_outcome,
+                  model="gpt-4o", input_tokens=100, output_tokens=20, rejected_by=None, error_code=None):
+    return {"kind": "request", "status": status, "rejected_by": rejected_by, "error_code": error_code,
+            "cache_outcome": cache_outcome,
             "model": model, "input_tokens": input_tokens, "output_tokens": output_tokens,
             "team": team, "name": name, "token_id": token_id, "timestamp": "2026-10-11T00:00:00+00:00"}
 
@@ -54,6 +55,7 @@ async def test_each_request_is_counted_for_its_team_user_and_token(repo):
     assert users["payments:invoice-bot"]["requests"] == 1
     assert tokens["tok-alice-1"] == {
         "team": "payments", "name": "alice", "requests": 1, "2xx": 1, "4xx": 0, "5xx": 0, "rate_limited": 0,
+        "no_model_available": 0,
         "cache_exact_hits": 0, "cache_semantic_hits": 0, "cache_misses": 1, "input_tokens": 100, "output_tokens": 20,
         "models": {"gpt-4o": {"requests": 1, "input_tokens": 100, "output_tokens": 20}},
     }
@@ -104,3 +106,23 @@ async def test_ping_reports_whether_redis_answers(repo, monkeypatch):
     monkeypatch.setattr(repo.cache_conn, "ping", down)
 
     assert await repo.ping() is False
+
+
+async def test_no_model_available_is_counted_gateway_wide_and_per_team_user_and_token(repo):
+    await repo.record_request(request_event(status=503, error_code="no_model_available", cache_outcome="miss",
+                                            model=None))
+    await repo.record_request(request_event(status=503, rejected_by="backpressure", cache_outcome=None, model=None))
+
+    assert (await repo.read_counters())[Counter.NO_MODEL_AVAILABLE] == 1     # backpressure's 503 isn't one
+    assert (await repo.read_entity_stats("team"))["payments"]["no_model_available"] == 1
+    assert (await repo.read_entity_stats("user"))["payments:alice"]["no_model_available"] == 1
+    assert (await repo.read_entity_stats("token"))["e72bb248c316"]["no_model_available"] == 1
+
+
+async def test_an_event_queued_before_error_code_existed_still_counts(repo):
+    event = request_event()
+    del event["error_code"]
+
+    await repo.record_request(event)
+
+    assert (await repo.read_counters())[Counter.RESPONSES_2XX] == 1

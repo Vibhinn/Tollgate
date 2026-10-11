@@ -306,11 +306,12 @@ data: {"uptime_seconds": 8123, "process": {...}, "requests": {...}, "cache": {..
 | Section | Fields |
 |---|---|
 | `uptime_seconds`, `process` | Gateway uptime, `cpu_percent` since the previous snapshot, `memory_mb` |
-| `requests` | `total`, `2xx`, `4xx`, `5xx`, `rate_limited`, `shed` (backpressure), `in_flight` (right now) |
+| `requests` | `total`, `2xx`, `4xx`, `5xx`, `rate_limited`, `no_model_available` (policy requests answered `503` because every model they could use was benched), `rejected_by_backpressure` (turned away with `503 overloaded`; gateway-wide only, since backpressure runs before the token is checked), `in_flight` (right now) |
+| `no_model_available` | `true` while every configured model is benched, i.e. no request can be answered right now; `null` if the models can't be read |
 | `cache` | `exact_hits`, `semantic_hits`, `misses`, `hit_rate` |
 | `models` | For every configured model: `requests`, `errors`, `input_tokens`, `output_tokens`, `avg_latency_ms`, and `available` (`false` while benched) |
 | `dependencies` | `redis` and `qdrant` (`ok` / `down`), `classifier` (`ok` / `degraded`) |
-| `teams`, `users`, `tokens` | **Admin tokens only.** One entry per team, per person or app (`team:name`), and per token ID from `tollgate token list`. Each has `requests`, `2xx`, `4xx`, `5xx`, `rate_limited`, `cache_exact_hits`, `cache_semantic_hits`, `cache_misses`, `input_tokens`, `output_tokens`, and `models` (requests and tokens per model). Token entries also have `team` and `name` |
+| `teams`, `users`, `tokens` | **Admin tokens only.** One entry per team, per person or app (`team:name`), and per token ID from `tollgate token list`. Each has `requests`, `2xx`, `4xx`, `5xx`, `rate_limited`, `no_model_available`, `cache_exact_hits`, `cache_semantic_hits`, `cache_misses`, `input_tokens`, `output_tokens`, and `models` (requests and tokens per model). Token entries also have `team` and `name` |
 
 - **How the numbers are made:** every request pushes one event to the `analytics` Redis stream after its response is sent (status, cache outcome, model, tokens, and who sent it). A background worker adds the events up, and an aggregator builds the snapshot once per second. The endpoint only reads that snapshot, so the numbers lag by about a second and any number of dashboards costs the same as one.
 - **Counters are running totals** kept in Redis, so they survive restarts. A dashboard gets rates (requests per second, etc.) from the difference between two snapshots. `in_flight` is the only current value.

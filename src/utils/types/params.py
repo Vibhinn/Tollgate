@@ -80,4 +80,5 @@ ATOMIC_COUNTERS = Literal[
     RedisAtomicCounters.CACHE_EXACT_HITS,
     RedisAtomicCounters.CACHE_SEMANTIC_HITS,
     RedisAtomicCounters.CACHE_MISSES,
+    RedisAtomicCounters.NO_MODEL_AVAILABLE,
 ]

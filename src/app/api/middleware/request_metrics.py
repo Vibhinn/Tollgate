@@ -8,6 +8,7 @@ from .exemptions import EXEMPT_PATHS, LONG_LIVED_PATHS
 from src.jobs import RedisStreamRepository
 from src.utils.types import RedisStreamName, RequestEventData
 from src.app.injector import container
+from src.app.exceptions.handlers import ERROR_CODE_STATE_KEY
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Scope, Receive, Send, Message
@@ -51,6 +52,7 @@ class RequestMetricsMiddleware(BaseMiddleware):
             kind="request",
             status=status_code,
             rejected_by=state.get(REJECTED_BY_STATE_KEY),
+            error_code=state.get(ERROR_CODE_STATE_KEY),
             cache_outcome=completion.cache_outcome if completion else None,
             # a cache hit didn't use a model
             model=completion.model if completion and not completion.cached else None,

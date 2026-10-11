@@ -76,3 +76,21 @@ def test_no_healthy_model_is_a_503_that_tells_the_client_when_to_retry(raise_thr
     assert response.status_code == 503
     assert response.headers["Retry-After"] == "12"
     assert response.json()["error"]["code"] == "no_model_available"
+
+
+def test_the_error_code_is_left_on_the_request_for_the_metrics_event(builder):
+    seen = {}
+    for exception_class, error_spec in builder.exception_map.items():
+        builder.app.add_exception_handler(exception_class, status_handler(error_spec))
+
+    @builder.app.get("/boom")
+    async def boom():
+        raise NoHealthyModelAvailable("all benched", 5)
+
+    async def outer(scope, receive, send):   # stands in for RequestMetricsMiddleware
+        await builder.app(scope, receive, send)
+        seen.update(scope.get("state", {}))
+
+    TestClient(outer).get("/boom")
+
+    assert seen["error_code"] == "no_model_available"

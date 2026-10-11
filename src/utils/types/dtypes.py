@@ -104,6 +104,7 @@ class RequestEventData(TypedDict):
     kind: Literal["request"]
     status: int
     rejected_by: Literal["rate_limit", "backpressure"] | None
+    error_code: str | None   # the OpenAI error code the request ended with, e.g. "no_model_available"
     cache_outcome: CACHE_OUTCOME | None
     model: str | None
     input_tokens: int

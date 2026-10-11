@@ -69,6 +69,7 @@ class MetricsAggregator:
 
     async def refresh(self) -> None:
         counters = await self._read(self.metrics_repo.read_counters())
+        models = await self._models()
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "uptime_seconds": int(time.time() - self._process.create_time()),
@@ -79,7 +80,9 @@ class MetricsAggregator:
             },
             "requests": self._requests(counters),
             "cache": self._cache(counters),
-            "models": await self._models(),
+            # true while every configured model is benched: no request can be answered right now
+            "no_model_available": self._no_model_available(models),
+            "models": models,
             "dependencies": await self._dependencies(),
         }
         teams, users, tokens = await asyncio.gather(*(self._read(self.metrics_repo.read_entity_stats(kind))
@@ -97,7 +100,11 @@ class MetricsAggregator:
             "total": sum(responses.values()),
             **responses,
             "rate_limited": counters[Counter.RATE_LIMITED],
-            "shed": counters[Counter.SHED],
+            # policy requests answered 503 because every model they could use was benched
+            "no_model_available": counters[Counter.NO_MODEL_AVAILABLE],
+            # turned away with 503 "overloaded" (max_in_flight reached). The Redis key stays "shed",
+            # so the count recorded before the rename carries over
+            "rejected_by_backpressure": counters[Counter.SHED],
             "in_flight": counters[Counter.IN_FLIGHT],
         }
 
@@ -133,6 +140,12 @@ class MetricsAggregator:
             }
             for name, latency in zip(model_names, latencies)
         }
+
+    @staticmethod
+    def _no_model_available(models: dict[str, dict[str, Any]] | None) -> bool | None:
+        if models is None:
+            return None
+        return not any(model["available"] for model in models.values())
 
     async def _dependencies(self) -> dict[str, str]:
         redis_ok, qdrant_ok = await asyncio.gather(self._ping(self.metrics_repo.ping()),
