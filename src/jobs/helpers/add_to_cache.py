@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from src.app.ports import CacheRepositoryInterface, VectorEmbeddingRepositoryInterface, VectorDBRepositoryInterface
 
 
-class AddToCache(BaseHelper):
+class AddToCacheHelper(BaseHelper):
     def __init__(
             self,
             exact_cache: CacheRepositoryInterface,

@@ -68,10 +68,13 @@ VECTOR_REPOSITORY_COLLECTIONS = Literal[
 ]
 
 ATOMIC_COUNTERS = Literal[
-    RedisAtomicCounters.FAILED,
-    RedisAtomicCounters.SUCCESSFUL,
+    RedisAtomicCounters.RESPONSES_2XX,
+    RedisAtomicCounters.RESPONSES_4XX,
+    RedisAtomicCounters.RESPONSES_5XX,
     RedisAtomicCounters.RATE_LIMITED,
-    RedisAtomicCounters.REJECTED,
     RedisAtomicCounters.IN_FLIGHT,
     RedisAtomicCounters.SHED,
+    RedisAtomicCounters.CACHE_EXACT_HITS,
+    RedisAtomicCounters.CACHE_SEMANTIC_HITS,
+    RedisAtomicCounters.CACHE_MISSES,
 ]

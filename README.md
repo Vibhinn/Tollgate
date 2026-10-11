@@ -287,6 +287,32 @@ Errors use OpenAI's body, `{"error": {"message", "type", "param", "code"}}`, so 
 
 Swagger docs at `http://localhost:13000/docs`.
 
+### Metrics
+
+`GET /api/v1/metrics` is a [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. It needs a Tollgate token like any other endpoint, and sends one `metrics` event with a full snapshot every `interval` seconds (`?interval=1` to `60`, default `2`).
+
+```bash
+curl -N -H "Authorization: Bearer tg_<your_token>" "http://localhost:13000/api/v1/metrics?interval=2"
+```
+
+```
+event: metrics
+data: {"uptime_seconds": 8123, "process": {...}, "requests": {...}, "cache": {...}, "models": {...}, "dependencies": {...}}
+```
+
+| Section | Fields |
+|---|---|
+| `uptime_seconds`, `process` | Gateway uptime, `cpu_percent` since the previous snapshot, `memory_mb` |
+| `requests` | `total`, `2xx`, `4xx`, `5xx`, `rate_limited`, `shed` (backpressure), `in_flight` (right now) |
+| `cache` | `exact_hits`, `semantic_hits`, `misses`, `hit_rate` |
+| `models` | For every configured model: `requests`, `errors`, `input_tokens`, `output_tokens`, `avg_latency_ms`, and `available` (`false` while benched) |
+| `dependencies` | `redis` and `qdrant` (`ok` / `down`), `classifier` (`ok` / `degraded`) |
+
+- **Counters are running totals** kept in Redis, so they survive restarts. A dashboard gets rates (requests per second, etc.) from the difference between two snapshots. `in_flight` is the only current value.
+- **A part that can't be read is `null`**, e.g. `requests`, `cache` and `models` when Redis is down, and the stream keeps going.
+- **The stream isn't counted** in `requests` and doesn't use a backpressure slot, so a dashboard left open has no effect on the gateway.
+- **From a browser,** the built-in `EventSource` can't send an `Authorization` header. Read the stream with `fetch()` and a stream reader instead, or have your dashboard's server read it and pass it on. A page served from another origin also needs Tollgate to send CORS headers, which it doesn't yet.
+
 ### Environment variables
 
 | Variable | Default | Purpose |
@@ -332,7 +358,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 10. **The semantic cache grows forever.** Qdrant points have no TTL (`X-Cache-TTL` only applies to the exact cache), and nothing evicts them.
 11. **Connection pools are capped.** Redis allows 1,000 connections with 3s socket timeouts. Qdrant's gRPC pool also allows 1,000. A Redis stall longer than 3s fails auth for every request in flight.
 12. **Startup isn't free.** Boot waits up to 30s for `llama-server`, then sends a real 1-token request to every configured model (small, but real, provider spend on every restart).
-13. **No observability yet.** `/api/v1/metrics` is a stub and isn't mounted. Logging is `print`.
+13. **Basic observability only.** `/api/v1/metrics` streams live counters (see [Metrics](#metrics)), but there's no Prometheus export or request tracing, and logging is `print`.
 
 ### Functional gaps
 
@@ -361,7 +387,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 | 14 | Self-hosted models (any OpenAI-compatible endpoint) | ✅ Done |
 | 15 | Managed Redis / Qdrant support (ElastiCache, Redis Cloud, Qdrant Cloud) | ✅ Done |
 | 16 | Docker image on GHCR (amd64 + arm64) | ✅ Done |
-| 17 | Analytics / metrics endpoint (data collected, API stub) | 🔧 In Progress |
+| 17 | Live metrics stream (`/api/v1/metrics`, server-sent events) | ✅ Done |
 | 18 | Streaming responses (SSE / chunked transfer) | 🔧 In Progress |
 | 19 | OpenAI-compatible Chat Completions (`/v1/chat/completions`, `/v1/models`, OpenAI errors) | ✅ Done |
 | 19b | Tool calling, JSON mode, image inputs, `/v1/embeddings` | 📋 Planned |
@@ -396,7 +422,7 @@ Tollgate/
 ├── src/
 │   ├── app/
 │   │   ├── adapters/            # ChatAdapter, RouterAdapter, GenerateAccessTokenAdapter
-│   │   ├── api/                 # /v1 routes (chat completions, models), OpenAI error format, metrics stub
+│   │   ├── api/                 # /v1 routes (chat completions, models), metrics stream (SSE)
 │   │   │   ├── limiter/         # Token bucket + per-key bucket store
 │   │   │   ├── middleware/      # Auth + rate limiting, exempt paths
 │   │   │   └── validators/      # Pydantic request models

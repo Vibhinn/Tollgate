@@ -32,4 +32,5 @@ def test_start_runs_uvicorn_when_config_is_valid(tmp_path, monkeypatch):
         with patch("uvicorn.run") as mock_run:
             start.callback()
 
-    mock_run.assert_called_once_with("main:app", host="0.0.0.0", port=13000, app_dir=".")
+    # a shutdown timeout, because open metrics streams never end on their own
+    mock_run.assert_called_once_with("main:app", host="0.0.0.0", port=13000, app_dir=".", timeout_graceful_shutdown=5)

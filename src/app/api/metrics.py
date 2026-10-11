@@ -1,25 +1,30 @@
-import os
-import psutil
-from fastapi import APIRouter, Request
+import asyncio
+import json
+from collections.abc import AsyncIterator
+
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
+
+from ..injector import get_metrics_adapter
+from ..adapters import MetricsAdapter
 
 metrics_api_router = APIRouter(prefix="/api/v1", tags=["metrics"])
-process_pid = os.getpid()
-process_metrics_client = psutil.Process(process_pid)
 
-@metrics_api_router.get("/metrics")
-async def get_all_metrics(request: Request):
-    """Gets all the metrics"""
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "X-Accel-Buffering": "no",
+}
 
-    result = {"cpu": None,
-              "memory": {
-                  #all memory
-              },
-              "latency": {
-                  #all latencies
-              },
-              "calls received": None,
-              "successful": None,
-              "failed requests": None,
-              "rate limited": None,
-              "redis health": None,
-              "qdrant health": None}
+
+async def metrics_events(metrics_adapter: MetricsAdapter, interval: int) -> AsyncIterator[str]:
+    while True:
+        snapshot = await metrics_adapter.snapshot()
+        yield f"event: metrics\ndata: {json.dumps(snapshot)}\n\n"
+        await asyncio.sleep(interval)
+
+
+@metrics_api_router.get(path="/metrics", tags=["metrics"])
+async def stream_metrics(interval: int = Query(default=2, ge=1, le=60, description="Seconds between snapshots"),
+                         metrics_adapter: MetricsAdapter = Depends(get_metrics_adapter)):
+    return StreamingResponse(metrics_events(metrics_adapter, interval), media_type="text/event-stream",
+                             headers=SSE_HEADERS)

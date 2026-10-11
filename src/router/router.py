@@ -57,6 +57,10 @@ class RouterRepository:
         except tuple(self._TTL_BY_EXCEPTION_MAP) as e:
             ttl: int = self._TTL_BY_EXCEPTION_MAP[type(e)]
             await self.router_adapter.mark_model_unavailable(model_name, ttl)
+            await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=AnalyticsJobData( #type: ignore
+                model_name=model_name, input_tokens=0, output_tokens=0, latency_ms=0.0,
+                timestamp=datetime.now().isoformat(), succeeded=False,
+            ))
 
             if model_selection_policy is None:
                 raise
@@ -74,7 +78,8 @@ class RouterRepository:
             input_tokens=model_response.input_tokens,
             output_tokens=model_response.output_tokens,
             latency_ms=latency_ms,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            succeeded=True,
         )
 
         await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore

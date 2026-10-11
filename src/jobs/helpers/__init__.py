@@ -1,4 +1,4 @@
-from .add_to_cache import AddToCache
-from .analytics import AnalyticsJobHelper
+from .add_to_cache import AddToCacheHelper
+from .analytics import AnalyticsHelper
 
-__all__ = ["AddToCache", "AnalyticsJobHelper"]
+__all__ = ["AddToCacheHelper", "AnalyticsHelper"]

@@ -43,7 +43,8 @@ def start():
         sys.exit(1)
 
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=13000, app_dir=_APP_DIR)
+    # open metrics streams never finish on their own; without a timeout, shutdown waits for every dashboard to disconnect
+    uvicorn.run("main:app", host="0.0.0.0", port=13000, app_dir=_APP_DIR, timeout_graceful_shutdown=5)
 
 
 

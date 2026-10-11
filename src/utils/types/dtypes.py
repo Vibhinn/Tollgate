@@ -79,3 +79,4 @@ class AnalyticsJobData(TypedDict):
     output_tokens: int
     latency_ms: float
     timestamp: str
+    succeeded: bool     # False: the provider failed; only the model's error count changes

@@ -31,14 +31,12 @@ class RateLimitingMiddleware(BaseMiddleware):
             return
 
         if scope["path"] in EXEMPT_PATHS:
-            await self.redis_repo.increment(RedisAtomicCounters.SUCCESSFUL)
             await self.app(scope, receive, send)
             return
 
         auth_header: str | None = Headers(scope=scope).get("Authorization")
 
         if not auth_header:
-            await self.redis_repo.increment(RedisAtomicCounters.REJECTED)
             await openai_error(401, "Missing bearer token in the Authorization header.", "invalid_request_error",
                                "invalid_api_key")(scope, receive, send)
             return
@@ -72,4 +70,3 @@ class RateLimitingMiddleware(BaseMiddleware):
             await send(message)
 
         await self.app(scope, receive, send_with_rate_limit_headers)
-        await self.redis_repo.increment(RedisAtomicCounters.SUCCESSFUL)

@@ -183,3 +183,22 @@ def test_max_in_flight_is_read_from_config(build_client, redis_repo):
     redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] = 120
 
     assert client.get("/api/v1/chat/completions").status_code == 503
+
+
+def test_a_metrics_stream_does_not_take_a_slot_even_when_the_gateway_is_full(redis_repo, test_container):
+    """A dashboard keeps /api/v1/metrics open for hours; it must neither hold nor need a slot."""
+    register_config(test_container, max_in_flight=1)
+    app = FastAPI()
+
+    @app.get("/api/v1/metrics")
+    async def metrics():
+        return {"ok": True}
+
+    app.add_middleware(BackpressureMiddleware)
+    redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] = 1   # gateway already full
+
+    response = TestClient(app).get("/api/v1/metrics")
+
+    assert response.status_code == 200
+    assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 1
+    assert redis_repo.counters[RedisAtomicCounters.SHED] == 0

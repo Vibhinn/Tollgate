@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 
 from .base import BaseMiddleware
-from .exemptions import EXEMPT_PATHS
+from .exemptions import EXEMPT_PATHS, LONG_LIVED_PATHS
 from src.app.exceptions.handlers import openai_error
 from src.cache import RedisRepository
 from src.utils.config import Config
@@ -26,10 +26,10 @@ class BackpressureMiddleware(BaseMiddleware):
         self.app = app
         self.redis_repo: CacheRepositoryInterface = container.resolve(RedisRepository)
         self.configuration: Config = container.resolve(Config)
-        self.max_in_flight: int = int(self.configuration.get_config(ConfigurationSection.BACKPRESSURE, ConfigurationOption.MAX_IN_FLIGHT))
+        self.max_in_flight: int = int(self.configuration.get_config(ConfigurationSection.BACKPRESSURE, ConfigurationOption.MAX_IN_FLIGHT)) #type: ignore
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["path"] in EXEMPT_PATHS:
+        if scope["type"] != "http" or scope["path"] in EXEMPT_PATHS or scope["path"] in LONG_LIVED_PATHS:
             await self.app(scope, receive, send)
             return
 

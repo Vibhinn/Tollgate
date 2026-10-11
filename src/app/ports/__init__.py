@@ -4,6 +4,8 @@ from .embeddings import VectorEmbeddingRepositoryInterface
 from .models import LLMRepositoryInterface
 from .jobs import JobQueueRepositoryInterface
 from .ranking import RankingRepositoryInterface
+from .metrics import MetricsRepositoryInterface
 
 __all__ = ["CacheRepositoryInterface", "VectorDBRepositoryInterface", "VectorEmbeddingRepositoryInterface",
-           "LLMRepositoryInterface", "JobQueueRepositoryInterface", "RankingRepositoryInterface"]
+           "LLMRepositoryInterface", "JobQueueRepositoryInterface", "RankingRepositoryInterface",
+           "MetricsRepositoryInterface"]

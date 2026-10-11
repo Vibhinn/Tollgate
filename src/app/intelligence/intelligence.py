@@ -101,6 +101,10 @@ class RoutingIntelligenceLayer:
             time.sleep(0.2)
         raise TimeoutError(f"{SERVER_BINARY_NAME} did not become ready within {_READINESS_TIMEOUT_SECONDS}s")
 
+    @property
+    def available(self) -> bool:
+        return self._available
+
     def shutdown(self) -> None:
         if self._server_process is None:
             return

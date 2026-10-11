@@ -6,7 +6,7 @@ import pytest
 
 from src.cache.connection import CacheConnection
 from src.cache.repository.qdrant_repository import QdrantRepository
-from src.jobs.helpers.add_to_cache import AddToCache
+from src.jobs.helpers.add_to_cache import AddToCacheHelper
 from src.utils.types import VectorRepositoryCollection
 
 
@@ -22,7 +22,7 @@ def helper(monkeypatch):
     qdrant_client = AsyncMock()
     monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: qdrant_client))
     vector_cache = QdrantRepository()
-    return AddToCache(exact_cache, embedding_repo, vector_cache), exact_cache, embedding_repo, qdrant_client
+    return AddToCacheHelper(exact_cache, embedding_repo, vector_cache), exact_cache, embedding_repo, qdrant_client
 
 
 def make_payload(**overrides):

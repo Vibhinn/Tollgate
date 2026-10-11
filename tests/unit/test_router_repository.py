@@ -174,7 +174,9 @@ async def test_invoke_model_blocklists_and_does_not_retry_an_explicit_model_requ
 
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
     router_adapter.get_best_model.assert_not_awaited()
-    router_adapter.add_job_to_queue.assert_not_awaited()
+    # only the failure is recorded, for the model's error count
+    router_adapter.add_job_to_queue.assert_awaited_once()
+    assert router_adapter.add_job_to_queue.await_args.kwargs["data"]["succeeded"] is False
 
 
 async def test_invoke_model_falls_back_to_next_best_model_for_auto_routed_requests(
@@ -192,7 +194,10 @@ async def test_invoke_model_falls_back_to_next_best_model_for_auto_routed_reques
     assert result.model == "gpt-4o-mini"
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
     router_adapter.get_best_model.assert_awaited_once_with("cheap")
-    router_adapter.add_job_to_queue.assert_awaited_once()
+    # one analytics job for the failure of gpt-4o, one for the answer from gpt-4o-mini
+    recorded = [(call.kwargs["data"]["model_name"], call.kwargs["data"]["succeeded"])
+                for call in router_adapter.add_job_to_queue.await_args_list]
+    assert recorded == [("gpt-4o", False), ("gpt-4o-mini", True)]
 
 
 async def test_invoke_model_raises_when_fallback_resolves_to_the_same_dead_model(

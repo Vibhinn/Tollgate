@@ -38,7 +38,7 @@ async def test_semantic_cache_miss_queries_qdrant_with_the_real_repository(
     embedding_repo.create_vector_embeddings.return_value = fake_embedding
     qdrant_network_client.query_points.return_value.points = []
 
-    response_cache = ResponseCache(exact_cache, embedding_repo, real_qdrant_repository, AsyncMock(), CacheKeyBuilder())
+    response_cache = ResponseCache(exact_cache, embedding_repo, real_qdrant_repository, AsyncMock(), CacheKeyBuilder(), AsyncMock())
 
     result = await response_cache.lookup(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
 

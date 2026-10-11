@@ -77,9 +77,12 @@ class AdapterType(StrEnum):
     CHAT = "chat"
 
 class RedisAtomicCounters(StrEnum):
-    SUCCESSFUL = "successful"
-    FAILED = "failed"
+    RESPONSES_2XX = "responses_2xx"
+    RESPONSES_4XX = "responses_4xx"
+    RESPONSES_5XX = "responses_5xx"
     RATE_LIMITED = "rate_limited"
-    REJECTED = "rejected"
     IN_FLIGHT = "in_flight"
     SHED = "shed"
+    CACHE_EXACT_HITS = "cache_exact_hits"
+    CACHE_SEMANTIC_HITS = "cache_semantic_hits"
+    CACHE_MISSES = "cache_misses"

@@ -80,7 +80,7 @@ def app(monkeypatch, provider, exact_cache, job_queue):
     router = RouterRepository(FakeProviderFactory(provider), router_adapter, FakeConfig())
     semantic_cache = AsyncMock()
     semantic_cache.search.return_value = None
-    response_cache = ResponseCache(exact_cache, AsyncMock(), semantic_cache, job_queue, CacheKeyBuilder())
+    response_cache = ResponseCache(exact_cache, AsyncMock(), semantic_cache, job_queue, CacheKeyBuilder(), AsyncMock())
     chat_adapter = ChatAdapter(response_cache, router)
 
     app = FastAPI()

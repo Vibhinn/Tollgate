@@ -17,3 +17,7 @@ class VectorDBRepositoryInterface(ABC):
     async def search(self, collection: VECTOR_REPOSITORY_COLLECTIONS, embedding: ndarray,
                      score_threshold: float = 0.9, context_hash: str | None = None) -> str | None:
         ...
+
+    @abstractmethod
+    async def ping(self) -> bool:
+        ...

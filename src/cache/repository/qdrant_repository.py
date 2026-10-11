@@ -58,3 +58,11 @@ class QdrantRepository(VectorDBRepositoryInterface):
         if not results.points:
             return None
         return results.points[0].payload["model_response"]
+
+    @override
+    async def ping(self) -> bool:
+        try:
+            await self.client.get_collections()
+            return True
+        except Exception:
+            return False

@@ -4,7 +4,7 @@ import pytest
 
 from src.cache import ResponseCache
 from src.cache.keys import CacheKeys, CacheKeyBuilder
-from src.utils.types import VectorRepositoryCollection, Message, GenerationParams, ChatRequest
+from src.utils.types import VectorRepositoryCollection, Message, GenerationParams, ChatRequest, RedisAtomicCounters
 
 KEYS = CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello")
 
@@ -36,8 +36,13 @@ def job_manager():
 
 
 @pytest.fixture
-def response_cache(exact_cache, embedding_repo, vector_cache, job_manager):
-    return ResponseCache(exact_cache, embedding_repo, vector_cache, job_manager, CacheKeyBuilder())
+def metrics_repo():
+    return AsyncMock()
+
+
+@pytest.fixture
+def response_cache(exact_cache, embedding_repo, vector_cache, job_manager, metrics_repo):
+    return ResponseCache(exact_cache, embedding_repo, vector_cache, job_manager, CacheKeyBuilder(), metrics_repo)
 
 
 def test_build_keys_covers_the_user_model_params_and_conversation(response_cache):
@@ -98,3 +103,26 @@ async def test_store_swallows_a_queue_outage_so_the_answer_still_reaches_the_cli
     await response_cache.store(KEYS, "the answer", "exact", 120)  # must not raise
 
     assert "could not queue the cache write" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("exact, semantic, expected_counter", [
+    ("exact answer", None, RedisAtomicCounters.CACHE_EXACT_HITS),
+    (None, "semantic answer", RedisAtomicCounters.CACHE_SEMANTIC_HITS),
+    (None, None, RedisAtomicCounters.CACHE_MISSES),
+])
+async def test_lookup_counts_exact_hits_semantic_hits_and_misses(
+    response_cache, exact_cache, vector_cache, metrics_repo, exact, semantic, expected_counter
+):
+    exact_cache.search.return_value = exact
+    vector_cache.search.return_value = semantic
+
+    await response_cache.lookup(KEYS, 0.9)
+
+    metrics_repo.increment.assert_awaited_once_with(expected_counter)
+
+
+async def test_a_metrics_outage_does_not_lose_a_cache_hit(response_cache, exact_cache, metrics_repo):
+    exact_cache.search.return_value = "cached exact answer"
+    metrics_repo.increment.side_effect = ConnectionError("redis down")
+
+    assert await response_cache.lookup(KEYS, 0.9) == "cached exact answer"
