@@ -34,7 +34,7 @@ test = [
     "pytest-cov>=5.0",
     "pytest-mock>=3.14",
     "httpx",
-    "fakeredis>=2.38",
+    "fakeredis[lua]>=2.38",
     "psutil"
 ]
 
@@ -54,3 +54,7 @@ source = ["src"]
 omit = [
     "src/app/intelligence/*",
 ]
+
+# non-Python files that must ship with the package (the rate limiter's Lua script)
+[tool.setuptools.package-data]
+"*" = ["*.lua"]

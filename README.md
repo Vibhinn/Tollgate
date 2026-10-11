@@ -362,8 +362,8 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 
 ### Load limits
 
-1. **One process, one event loop.** `tollgate start` runs a single uvicorn worker. Request handling, the Redis Streams worker and embedding calls all share it. You can't simply add workers (see 2).
-2. **The rate limiter is in-memory and per-process.** Buckets live in a Python dict, reset on restart, and aren't shared across processes or instances. Running two instances behind a load balancer doubles the effective limit.
+1. **One process, one event loop.** `tollgate start` runs a single uvicorn worker. Request handling, the Redis Streams worker and embedding calls all share it. Rate limits are now shared through Redis, but two things still stop you from simply adding workers on one host: the classifier's fixed port (see 4), and each worker resetting the shared `in_flight` counter to 0 when it starts.
+2. **Rate-limit buckets live in Redis.** One token bucket per team:name, taken atomically by a Lua script using Redis's clock, so every worker and instance shares the same limit and buckets survive restarts. If Redis can't be reached for the limit check, the request is let through rather than failed.
 3. **`"smart"` routing is CPU-bound and serialized.** On a classifier cache miss, the prompt goes to a 1.5B model on CPU, one at a time by default. On a small box, concurrent `"smart"` traffic queues behind it. That's what drove the 60s timeouts in the chaos run. Classifier answers are cached in Qdrant (similarity ≥ 0.7), so repeat-ish prompts skip it.
 4. **Each process spawns its own `llama-server` on fixed port 8091.** A second instance on the same host can't start its classifier and drops to "degraded" mode, where every `"smart"` request routes as `SIMPLE`.
 5. **Every request pays for an embedding.** When the exact cache misses, the semantic lookup runs, even if the request didn't set `cache_type`. model2vec runs on the default thread pool, so it competes for CPU with everything else. `"smart"` computes a second embedding for the classifier cache.
@@ -407,7 +407,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 | 18 | Streaming responses (SSE / chunked transfer) | 🔧 In Progress |
 | 19 | OpenAI-compatible Chat Completions (`/v1/chat/completions`, `/v1/models`, OpenAI errors) | ✅ Done |
 | 19b | Tool calling, JSON mode, image inputs, `/v1/embeddings` | 📋 Planned |
-| 20 | Redis-backed, per-user rate limiter (multi-instance safe) | 📋 Planned |
+| 20 | Redis-backed, per-user rate limiter (multi-instance safe) | ✅ Done |
 | 21 | Multi-worker / horizontally scalable deployment | 📋 Planned |
 | 22 | Full conversation history + `temperature` passthrough | ✅ Done |
 | 23 | Per-token budget enforcement and cost caps | 📋 Planned |

@@ -15,7 +15,6 @@ from src.app.factory import ApplicationRepositoryFactory
 from src.app.adapters import ChatAdapter, ModelsAdapter, MetricsAdapter, AdminAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
-from src.app.api.limiter import RateLimiterStore
 from src.app.exceptions.handlers import (ErrorSpec, status_handler, validation_error_handler, http_error_handler,
                                          unexpected_error_handler)
 from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
@@ -23,7 +22,8 @@ from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
                                 ModelProviderServerError, APIError, BadRequestToModel, InvalidAdminCredentials,
                                 NoHealthyModelAvailable)
 
-from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository, RedisMetricsRepository, ResponseCache
+from src.cache import (RedisRepository, QdrantRepository, RedisRankingRepository, RedisMetricsRepository, RedisRateLimiter,
+                       ResponseCache)
 from src.cache.keys import CacheKeyBuilder
 
 from src.jobs import JobQueueConnection
@@ -96,8 +96,7 @@ class Builder:
         container.register(LLMRepositoryFactory, lambda: LLMRepositoryFactory(
                                                                         container.resolve(Config)))
 
-        container.register(RateLimiterStore, lambda: RateLimiterStore(
-                                                                        container.resolve(Config)))
+        container.register(RedisRateLimiter, lambda: RedisRateLimiter(container.resolve(Config)))
 
         container.register(RouterRepository, lambda: RouterRepository(container.resolve(LLMRepositoryFactory),
                                                                         container.resolve(RouterAdapter),

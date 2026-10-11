@@ -60,6 +60,14 @@ class LLMInvocationResult:
 
 
 @dataclass(frozen=True)
+class RateLimitDecision:
+    allowed: bool
+    limit: int          # bucket size
+    remaining: int      # tokens left after this request
+    reset_at: float     # unix time of the next refill
+
+
+@dataclass(frozen=True)
 class TokenIdentity:
     """Who a token belongs to, as the auth middleware hands it to the rest of the request."""
     user_id: str        # team:name
