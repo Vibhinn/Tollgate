@@ -70,7 +70,7 @@ def test_a_completion_is_returned_in_openai_format(client):
 
 
 def test_a_cache_hit_is_marked_in_the_header(client, chat_adapter):
-    chat_adapter.complete.return_value = LLMInvocationResult("cached reply", 0, 0, model="cheap", cached=True)
+    chat_adapter.complete.return_value = LLMInvocationResult("cached reply", 0, 0, model="cheap", cache_outcome="exact_hit")
 
     response = client.post("/v1/chat/completions", json=chat_body())
 

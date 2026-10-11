@@ -43,14 +43,17 @@ async def test_get_best_model_excludes_unavailable_models_from_cheap_pricing(ada
     assert result == "gpt-3.5-turbo"
 
 
-async def test_get_best_model_maps_fast_to_latency_ranking(adapter):
-    router_adapter, _, ranking_repo, _, _ = adapter
-    ranking_repo.get_top_available.return_value = "gemini-3.5-flash"
+async def test_get_best_model_maps_fast_to_latency_ranking_of_configured_models_only(adapter):
+    router_adapter, _, ranking_repo, _, llm_repo_factory = adapter
+    llm_repo_factory.get_repo = lambda provider: object() if provider == "gemini" else None
+    ranking_repo.get_top_available.return_value = "gemini-3.8-flash"
 
     result = await router_adapter.get_best_model("fast")
 
-    ranking_repo.get_top_available.assert_awaited_once_with("model:ranking:latency")
-    assert result == "gemini-3.5-flash"
+    key, candidates = ranking_repo.get_top_available.await_args.args
+    assert key == "model:ranking:latency"
+    assert set(candidates) == {"gemini-3.8-flash", "gemini-3.5-flash-lite"}
+    assert result == "gemini-3.8-flash"
 
 
 async def test_get_best_model_returns_none_for_unmapped_requirement(adapter):

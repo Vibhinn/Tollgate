@@ -101,7 +101,6 @@ def test_request_over_limit_is_shed_with_retry_after(build_client, redis_repo):
         backpressure_module.BASE_RETRY_AFTER_SECONDS + backpressure_module.RETRY_AFTER_JITTER_SECONDS
     )
     assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 2  # shed request gave its slot back
-    assert redis_repo.counters[RedisAtomicCounters.SHED] == 1
 
 
 def test_slot_is_released_when_handler_raises(build_client, redis_repo):
@@ -202,3 +201,21 @@ def test_a_metrics_stream_does_not_take_a_slot_even_when_the_gateway_is_full(red
     assert response.status_code == 200
     assert redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] == 1
     assert redis_repo.counters[RedisAtomicCounters.SHED] == 0
+
+
+def test_a_shed_request_is_marked_for_the_metrics_event(build_client, redis_repo, test_container):
+    register_config(test_container, max_in_flight=1)
+    redis_repo.counters[RedisAtomicCounters.IN_FLIGHT] = 1
+    seen_state = {}
+
+    app = FastAPI()
+    app.add_middleware(BackpressureMiddleware)
+
+    async def outer(scope, receive, send):   # stands in for RequestMetricsMiddleware
+        await app(scope, receive, send)
+        seen_state.update(scope.get("state", {}))
+
+    response = TestClient(outer).get("/api/v1/chat/completions")
+
+    assert response.status_code == 503
+    assert seen_state["rejected_by"] == "backpressure"

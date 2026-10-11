@@ -12,7 +12,7 @@ from src.router import RouterRepository
 from src.app.adapters import RouterAdapter
 from src.app.intelligence import RoutingIntelligenceLayer
 from src.app.factory import ApplicationRepositoryFactory
-from src.app.adapters import ChatAdapter, ModelsAdapter, MetricsAdapter
+from src.app.adapters import ChatAdapter, ModelsAdapter, MetricsAdapter, AdminAdapter
 from src.app.migrations import BaseMigration
 from src.app.injector import container
 from src.app.api.limiter import RateLimiterStore
@@ -20,13 +20,14 @@ from src.app.exceptions.handlers import (ErrorSpec, status_handler, validation_e
                                          unexpected_error_handler)
 from src.app.exceptions import (ModelSemanticNotFound, PermissionDeniedForModel,
                                 APIKeyInvalidOrExpired, CreditExhaustion, RateLimitedFromModelProvider,
-                                ModelProviderServerError, APIError, BadRequestToModel)
+                                ModelProviderServerError, APIError, BadRequestToModel, InvalidAdminCredentials,
+                                NoHealthyModelAvailable)
 
 from src.cache import RedisRepository, QdrantRepository, RedisRankingRepository, RedisMetricsRepository, ResponseCache
 from src.cache.keys import CacheKeyBuilder
 
 from src.jobs import JobQueueConnection
-from src.jobs import RedisStreamRepository
+from src.jobs import RedisStreamRepository, MetricsAggregator
 from src.jobs.helpers import AddToCacheHelper, AnalyticsHelper
 
 from src.utils.config import Config
@@ -52,6 +53,8 @@ class Builder:
             CreditExhaustion: ErrorSpec(502, "api_error", "upstream_credit_exhausted"),
             ModelProviderServerError: ErrorSpec(502, "api_error", "upstream_server_error"),
             APIError: ErrorSpec(502, "api_error", "upstream_connection_error"),
+            InvalidAdminCredentials: ErrorSpec(401, "invalid_request_error", "invalid_credentials"),
+            NoHealthyModelAvailable: ErrorSpec(503, "server_error", "no_model_available"),
         }
 
     @property
@@ -107,20 +110,24 @@ class Builder:
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.EMBEDDING),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.VECTOR_CACHE),
                                                                         container.resolve(RedisStreamRepository),
-                                                                        container.resolve(CacheKeyBuilder),
-                                                                        container.resolve(RedisMetricsRepository)))
+                                                                        container.resolve(CacheKeyBuilder)))
 
         container.register(ChatAdapter, lambda: ChatAdapter(container.resolve(ResponseCache),
                                                                         container.resolve(RouterRepository)))
 
         container.register(ModelsAdapter, lambda: ModelsAdapter(container.resolve(RouterRepository)))
 
-        container.register(MetricsAdapter, lambda: MetricsAdapter(
+        container.register(MetricsAggregator, lambda: MetricsAggregator(
                                                                         container.resolve(RedisMetricsRepository),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.RANKING),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.VECTOR_CACHE),
                                                                         container.resolve(RouterRepository),
                                                                         container.resolve(RoutingIntelligenceLayer)))
+
+        container.register(MetricsAdapter, lambda: MetricsAdapter(container.resolve(MetricsAggregator)))
+
+        container.register(AdminAdapter, lambda: AdminAdapter(container.resolve(Config),
+                                                                        container.resolve(RedisRepository)))
 
 
         container.register(RoutingIntelligenceLayer, lambda: RoutingIntelligenceLayer(

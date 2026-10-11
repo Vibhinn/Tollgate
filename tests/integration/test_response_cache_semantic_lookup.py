@@ -38,13 +38,13 @@ async def test_semantic_cache_miss_queries_qdrant_with_the_real_repository(
     embedding_repo.create_vector_embeddings.return_value = fake_embedding
     qdrant_network_client.query_points.return_value.points = []
 
-    response_cache = ResponseCache(exact_cache, embedding_repo, real_qdrant_repository, AsyncMock(), CacheKeyBuilder(), AsyncMock())
+    response_cache = ResponseCache(exact_cache, embedding_repo, real_qdrant_repository, AsyncMock(), CacheKeyBuilder())
 
-    result = await response_cache.lookup(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
+    result, outcome = await response_cache.lookup(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
 
     call_kwargs = qdrant_network_client.query_points.await_args.kwargs
     assert call_kwargs["collection_name"] == VectorRepositoryCollection.SEMANTIC_CACHE
     assert call_kwargs["query"] == fake_embedding[0].tolist()
     assert call_kwargs["query_filter"].must[0].match.value == "ctx"
     assert call_kwargs["score_threshold"] == 0.9
-    assert result is None
+    assert (result, outcome) == (None, "miss")

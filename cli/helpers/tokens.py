@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import json
 import re
-import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 
 import redis
 
 from src.utils.config import Config
-from src.utils.tokens import TOKEN_PREFIX, TOKEN_INDEX_KEY, IDENTIFIER_PATTERN, hash_token, token_key
+from src.utils.tokens import (TOKEN_PREFIX, TOKEN_INDEX_KEY, TOKEN_ID_LENGTH, IDENTIFIER_PATTERN, ROLE_USER, ROLE_ADMIN,
+                              hash_token, token_key, token_id, new_token, token_record)
 from src.utils.types import ConfigurationEnums, ConfigurationSection, ConfigurationOption
 
-TOKEN_ID_LENGTH = 12
 _TTL_PATTERN = re.compile(r"^(\d+)([dh])$")
 _TTL_UNIT_SECONDS = {"d": 86_400, "h": 3_600}
 
@@ -24,6 +22,7 @@ class TokenRecord:
     name: str
     created_at: str
     expires_at: str | None
+    role: str = ROLE_USER
 
 
 def parse_ttl(value: str) -> int | None:
@@ -59,22 +58,12 @@ class TokenStore:
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
 
-    def create(self, team: str, name: str, ttl_seconds: int | None) -> tuple[str, TokenRecord]:
+    def create(self, team: str, name: str, ttl_seconds: int | None, admin: bool = False) -> tuple[str, TokenRecord]:
         validate_identifier("team", team)
         validate_identifier("name", name)
 
-        token = f"{TOKEN_PREFIX}{secrets.token_urlsafe(32)}"
-        token_hash = hash_token(token)
-        now = datetime.now(timezone.utc)
-        expires_at = (now + timedelta(seconds=ttl_seconds)).isoformat(timespec="seconds") if ttl_seconds else None
-
-        record = {
-            "user_id": f"{team}:{name}",
-            "team": team,
-            "name": name,
-            "created_at": now.isoformat(timespec="seconds"),
-            "expires_at": expires_at,
-        }
+        token, token_hash = new_token()
+        record = token_record(team, name, ROLE_ADMIN if admin else ROLE_USER, ttl_seconds)
         pipe = self.redis.pipeline()
         pipe.set(token_key(token_hash), json.dumps(record), ex=ttl_seconds)
         pipe.sadd(TOKEN_INDEX_KEY, token_hash)
@@ -132,9 +121,11 @@ class TokenStore:
     @staticmethod
     def _to_record(token_hash: str, stored: dict) -> TokenRecord:
         return TokenRecord(
-            id=token_hash[:TOKEN_ID_LENGTH],
+            id=token_id(token_hash),
             team=stored["team"],
             name=stored["name"],
             created_at=stored["created_at"],
             expires_at=stored.get("expires_at"),
+            # tokens created before roles existed are user tokens
+            role=stored.get("role", ROLE_USER),
         )

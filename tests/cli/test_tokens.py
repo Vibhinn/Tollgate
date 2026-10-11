@@ -34,6 +34,25 @@ def test_create_stores_only_the_hash_with_team_name_and_user_id(store, redis_cli
     assert record.id == hash_token(token)[:TOKEN_ID_LENGTH]
 
 
+def test_tokens_are_user_tokens_unless_created_as_admin(store, redis_client):
+    user_token, user_record = store.create("payments", "alice", ttl_seconds=3600)
+    admin_token, admin_record = store.create("ops", "dashboard", ttl_seconds=3600, admin=True)
+
+    assert json.loads(redis_client.get(token_key(hash_token(user_token))))["role"] == "user"
+    assert json.loads(redis_client.get(token_key(hash_token(admin_token))))["role"] == "admin"
+    assert (user_record.role, admin_record.role) == ("user", "admin")
+
+
+def test_a_token_created_before_roles_existed_lists_as_a_user_token(store, redis_client):
+    token, _ = store.create("payments", "alice", ttl_seconds=3600)
+    key = token_key(hash_token(token))
+    stored = json.loads(redis_client.get(key))
+    del stored["role"]
+    redis_client.set(key, json.dumps(stored))
+
+    assert store.list()[0].role == "user"
+
+
 def test_never_expiring_token_has_no_ttl(store, redis_client):
     token, record = store.create("payments", "invoice-bot", ttl_seconds=None)
 
@@ -178,3 +197,15 @@ def test_cli_revoke_unknown_id_fails(run):
     result, _ = run("revoke", "doesnotexist")
 
     assert result.exit_code == 1
+
+
+def test_cli_create_admin_token_requires_admin_and_is_listed_with_its_role(run, store):
+    result, verify_admin = run("create", "--team", "ops", "--name", "dashboard", "--admin")
+
+    assert result.exit_code == 0, result.output
+    verify_admin.assert_called_once()
+    assert "Admin token created" in result.output
+    assert [(r.team, r.name, r.role) for r in store.list()] == [("ops", "dashboard", "admin")]
+
+    listing, _ = run("list")
+    assert "admin" in listing.output

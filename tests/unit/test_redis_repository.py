@@ -55,3 +55,43 @@ async def test_search_returns_connection_value(repo, redis_conn):
 
     redis_conn.get.assert_awaited_once_with("some message")
     assert result == "cached response"
+
+
+async def test_get_identity_returns_who_the_token_belongs_to(repo, redis_conn):
+    redis_conn.get.return_value = '{"user_id": "payments:alice", "team": "payments", "name": "alice", "role": "admin"}'
+
+    identity = await repo.get_identity("tg_abc")
+
+    assert identity.user_id == "payments:alice"
+    assert (identity.team, identity.name, identity.role) == ("payments", "alice", "admin")
+    # the same short ID `tollgate token list` shows
+    assert identity.token_id == hash_token("tg_abc")[:12]
+
+
+async def test_a_token_created_before_roles_existed_is_a_user_token(repo, redis_conn):
+    redis_conn.get.return_value = '{"user_id": "payments:alice", "team": "payments", "name": "alice"}'
+
+    assert (await repo.get_identity("tg_abc")).role == "user"
+
+
+@pytest.mark.parametrize("stored", [None, "not json", '{"user_id": "payments:alice"}'])
+async def test_get_identity_treats_missing_or_malformed_tokens_as_invalid(repo, redis_conn, stored):
+    redis_conn.get.return_value = stored
+
+    assert await repo.get_identity("tg_abc") is None
+
+
+async def test_a_created_token_is_stored_as_a_hash_with_its_role_and_expiry(monkeypatch):
+    from fakeredis import FakeAsyncRedis
+    from src.utils.tokens import TOKEN_INDEX_KEY, token_key
+    redis = FakeAsyncRedis(decode_responses=True)
+    monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: redis))
+    repo = RedisRepository()
+
+    token = await repo.create_token("admin", "dashboard-session", "admin", 3600)
+
+    identity = await repo.get_identity(token)
+    assert (identity.team, identity.name, identity.role) == ("admin", "dashboard-session", "admin")
+    assert await redis.get(f"token:{token}") is None          # never the token itself
+    assert 3590 < await redis.ttl(token_key(hash_token(token))) <= 3600
+    assert await redis.sismember(TOKEN_INDEX_KEY, hash_token(token))

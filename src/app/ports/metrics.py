@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import Any, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.utils.types import ATOMIC_COUNTERS
+    from src.utils.types import RequestEventData
+
+ENTITY_KIND = Literal["team", "user", "token"]
 
 
 class MetricsRepositoryInterface(ABC):
     @abstractmethod
-    async def increment(self, counter: ATOMIC_COUNTERS) -> None:
+    async def record_request(self, event: RequestEventData) -> None:
+        """Adds one request to the gateway totals and to its team, user (team:name) and token."""
         ...
 
     @abstractmethod
@@ -28,6 +31,11 @@ class MetricsRepositoryInterface(ABC):
     @abstractmethod
     async def read_model_stats(self, model_names: list[str]) -> dict[str, dict[str, int]]:
         """Model -> requests, errors, input_tokens, output_tokens."""
+        ...
+
+    @abstractmethod
+    async def read_entity_stats(self, kind: ENTITY_KIND) -> dict[str, dict[str, Any]]:
+        """Every team, user or token seen so far -> its totals, plus its per-model usage under "models"."""
         ...
 
     @abstractmethod

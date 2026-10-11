@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.app.adapters.chat_adapter import ChatAdapter
-from src.app.exceptions import ModelSemanticNotFound
+from src.app.exceptions import ModelSemanticNotFound, NoHealthyModelAvailable
 from src.cache.keys import CacheKeys
 from src.utils.types import Message, GenerationParams, ChatRequest, LLMInvocationResult
 
@@ -22,7 +22,7 @@ def chat_request(**overrides) -> ChatRequest:
 def response_cache():
     cache = AsyncMock()
     cache.build_keys = MagicMock(return_value=KEYS)
-    cache.lookup.return_value = None
+    cache.lookup.return_value = (None, "miss")
     return cache
 
 
@@ -41,11 +41,12 @@ def adapter(response_cache, router_manager):
 
 
 async def test_complete_returns_a_cache_hit_without_calling_the_model(adapter, response_cache, router_manager):
-    response_cache.lookup.return_value = "cached answer"
+    response_cache.lookup.return_value = ("cached answer", "semantic_hit")
 
     result = await adapter.complete("payments:alice", chat_request(cache_match_score=0.8))
 
     assert (result.content, result.cached, result.model) == ("cached answer", True, "cheap")
+    assert result.cache_outcome == "semantic_hit"
     assert (result.input_tokens, result.output_tokens, result.finish_reason) == (0, 0, "stop")
     response_cache.build_keys.assert_called_once_with("payments:alice", chat_request(cache_match_score=0.8))
     response_cache.lookup.assert_awaited_once_with(KEYS, 0.8)
@@ -55,8 +56,8 @@ async def test_complete_returns_a_cache_hit_without_calling_the_model(adapter, r
 async def test_complete_asks_the_model_on_a_miss_and_does_not_cache_without_cache_type(adapter, response_cache):
     result = await adapter.complete("payments:alice", chat_request())
 
-    assert result == LLM_RESULT
-    assert result.cached is False
+    assert result.content == LLM_RESULT.content
+    assert (result.cached, result.cache_outcome) == (False, "miss")
     response_cache.store.assert_not_awaited()
 
 
@@ -124,3 +125,23 @@ async def test_query_llm_sends_a_named_model_straight_to_the_router(adapter, rou
 
     router_manager.get_best_model.assert_not_awaited()
     router_manager.invoke_model.assert_awaited_once_with(model_name="gpt-4o", messages=sample_messages, params=PARAMS)
+
+
+async def test_a_policy_with_every_model_benched_is_a_503_with_the_wait(adapter, router_manager, sample_messages):
+    router_manager.get_best_model.return_value = None
+    router_manager.seconds_until_a_model_returns.return_value = 7
+
+    with pytest.raises(NoHealthyModelAvailable, match="Retry in 7s") as exc_info:
+        await adapter.query_llm("fast", sample_messages, PARAMS)
+
+    assert exc_info.value.headers == {"Retry-After": "7"}
+    router_manager.invoke_model.assert_not_awaited()
+
+
+async def test_a_policy_with_no_model_to_pick_and_nothing_benched_stays_a_404(adapter, router_manager, sample_messages):
+    """Waiting can't help here, e.g. no model for this kind of prompt is configured."""
+    router_manager.get_best_model.return_value = None
+    router_manager.seconds_until_a_model_returns.return_value = None
+
+    with pytest.raises(ModelSemanticNotFound, match="smart"):
+        await adapter.query_llm("smart", sample_messages, PARAMS)

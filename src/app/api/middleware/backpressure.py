@@ -5,7 +5,7 @@ import random
 from typing import TYPE_CHECKING
 
 
-from .base import BaseMiddleware
+from .base import BaseMiddleware, REJECTED_BY_STATE_KEY
 from .exemptions import EXEMPT_PATHS, LONG_LIVED_PATHS
 from src.app.exceptions.handlers import openai_error
 from src.cache import RedisRepository
@@ -42,7 +42,7 @@ class BackpressureMiddleware(BaseMiddleware):
 
         if in_flight > self.max_in_flight:
             await self.redis_repo.decrement(RedisAtomicCounters.IN_FLIGHT)
-            await self.redis_repo.increment(RedisAtomicCounters.SHED)
+            scope.setdefault("state", {})[REJECTED_BY_STATE_KEY] = "backpressure"
             retry_after: int = BASE_RETRY_AFTER_SECONDS + random.randint(0, RETRY_AFTER_JITTER_SECONDS)
             response = openai_error(503, "Gateway is overloaded. Try again shortly.", "server_error", "overloaded",
                                     headers={"Retry-After": str(retry_after)})

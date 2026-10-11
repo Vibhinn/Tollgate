@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 
 CATEGORY_MODEL_PREFERENCE = {
     "SIMPLE": ["claude-haiku-4-5", "gemini-3.5-flash-lite", "gpt-4o-mini"],
-    "CODE": ["claude-sonnet-4-6", "gpt-4o", "gemini-3.5-flash"],
+    "CODE": ["claude-sonnet-4-6", "gpt-4o", "gemini-3.8-flash"],
     "REASONING": ["claude-opus-4-6", "o1", "gpt-4o"],
-    "CREATIVE": ["claude-opus-4-6", "gpt-4o", "gemini-3.5-flash"],
+    "CREATIVE": ["claude-opus-4-6", "gpt-4o", "gemini-3.8-flash"],
 }
 
 

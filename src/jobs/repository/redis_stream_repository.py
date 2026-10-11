@@ -18,6 +18,13 @@ if TYPE_CHECKING:
 GROUP_NAME: str = "tollgate-workers"
 MAX_DELIVERIES: int = 5
 CLAIM_IDLE_MS: int = 30_000
+READ_BATCH_SIZE: int = 200
+
+# analytics gets an event per request; the cap only has to cover a backlog, not the history
+STREAM_MAX_LENGTH: dict[str, int] = {
+    RedisStreamName.ANALYTICS: 100_000,
+    RedisStreamName.RESPONSE_CACHE: 1_000,
+}
 
 
 class RedisStreamRepository(JobQueueRepositoryInterface):
@@ -90,7 +97,7 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             groupname=GROUP_NAME,
             consumername=self._consumer_name,
             streams=streams,
-            count=10,
+            count=READ_BATCH_SIZE,
             block=1000
         )
 
@@ -130,4 +137,5 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
 
     async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
         payload: StreamPayload = {"payload": json.dumps(data)}
-        await self.redis_client.xadd(stream_name, payload, maxlen=1000, approximate=True)  # type: ignore
+        await self.redis_client.xadd(stream_name, payload, maxlen=STREAM_MAX_LENGTH.get(stream_name, 1_000),  # type: ignore
+                                     approximate=True)

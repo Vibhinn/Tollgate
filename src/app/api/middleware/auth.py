@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from starlette.datastructures import Headers
 
-from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY
+from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY, IDENTITY_STATE_KEY
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 from src.app.exceptions.handlers import openai_error
@@ -32,10 +32,12 @@ class AuthenticationMiddleware(BaseMiddleware):
 
         token: str = auth_header.removeprefix("Bearer ")
 
-        token_value: str | None = await self.redis_repo.get_user_id(token)
-        if not token_value:
+        identity = await self.redis_repo.get_identity(token)
+        if identity is None:
             await openai_error(401, "Invalid, expired or revoked Tollgate token.", "invalid_request_error", "invalid_api_key")(scope, receive, send)
             return
 
-        scope.setdefault("state", {})[TOKEN_VALUE_STATE_KEY] = token_value
+        state = scope.setdefault("state", {})
+        state[TOKEN_VALUE_STATE_KEY] = identity.user_id
+        state[IDENTITY_STATE_KEY] = identity
         await self.app(scope, receive, send)

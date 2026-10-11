@@ -11,7 +11,7 @@ PROVIDERS = {
     },
     "Gemini": {
         "config_key": LLMProvider.GEMINI,
-        "models": ["gemini-3.5-flash", "gemini-3.5-flash-lite"],
+        "models": ["gemini-3.8-flash", "gemini-3.5-flash-lite"],
     },
 }
 

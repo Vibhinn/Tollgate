@@ -3,12 +3,12 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from src.utils.types import CacheJobData, RedisStreamName, VectorRepositoryCollection, RedisAtomicCounters
+from src.utils.types import CacheJobData, RedisStreamName, VectorRepositoryCollection
 
 if TYPE_CHECKING:
     from src.app.ports import (CacheRepositoryInterface, VectorEmbeddingRepositoryInterface,
-                               VectorDBRepositoryInterface, JobQueueRepositoryInterface, MetricsRepositoryInterface)
-    from src.utils.types import CACHE_TYPE, ATOMIC_COUNTERS, ChatRequest
+                               VectorDBRepositoryInterface, JobQueueRepositoryInterface)
+    from src.utils.types import CACHE_TYPE, CACHE_OUTCOME, ChatRequest
     from .keys import CacheKeyBuilder, CacheKeys
 
 
@@ -21,14 +21,12 @@ class ResponseCache:
                  embedding_repo: VectorEmbeddingRepositoryInterface,
                  vector_cache: VectorDBRepositoryInterface,
                  job_manager: JobQueueRepositoryInterface,
-                 key_builder: CacheKeyBuilder,
-                 metrics_repo: MetricsRepositoryInterface):
+                 key_builder: CacheKeyBuilder):
         self.exact_cache = exact_cache
         self.embedding_repo = embedding_repo
         self.vector_cache = vector_cache
         self.job_manager = job_manager
         self.key_builder = key_builder
-        self.metrics_repo = metrics_repo
 
     def build_keys(self, user_id: str | None, chat_request: ChatRequest) -> CacheKeys:
         return self.key_builder.build_cache_keys(
@@ -38,33 +36,22 @@ class ResponseCache:
             messages=chat_request.messages,
         )
 
-    async def lookup(self, cache_keys: CacheKeys, score_threshold: float) -> str | None:
-        """A cache outage is a miss: the request still gets answered by the model."""
-        answer, counter = await self._search(cache_keys, score_threshold)
-        await self._count(counter)
-        return answer
-
-    async def _search(self, cache_keys: CacheKeys, score_threshold: float) -> tuple[str | None, ATOMIC_COUNTERS]:
+    async def lookup(self, cache_keys: CacheKeys, score_threshold: float) -> tuple[str | None, CACHE_OUTCOME]:
+        """The answer, if any, and which layer found it. A cache outage is a miss:
+        the request still gets answered by the model."""
         try:
             answer = await self.exact_cache.search(cache_keys.exact_key)
             if answer:
-                return answer, RedisAtomicCounters.CACHE_EXACT_HITS
+                return answer, "exact_hit"
             embedding = await self.embedding_repo.create_vector_embeddings(cache_keys.prompt)
             answer = await self.vector_cache.search(
                 VectorRepositoryCollection.SEMANTIC_CACHE, embedding, score_threshold, context_hash=cache_keys.context_hash
             )
             if answer:
-                return answer, RedisAtomicCounters.CACHE_SEMANTIC_HITS
+                return answer, "semantic_hit"
         except Exception:
             pass
-        return None, RedisAtomicCounters.CACHE_MISSES
-
-    async def _count(self, counter: ATOMIC_COUNTERS) -> None:
-        # a metrics outage must never turn a cache hit into an error
-        try:
-            await self.metrics_repo.increment(counter)
-        except Exception:
-            pass
+        return None, "miss"
 
     async def store(self, cache_keys: CacheKeys, content: str, cache_type: CACHE_TYPE, ttl: int) -> None:
         """Best effort, like lookup: the answer is already paid for, so a cache outage

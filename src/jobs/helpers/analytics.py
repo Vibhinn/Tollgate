@@ -19,8 +19,15 @@ class AnalyticsHelper(BaseHelper):
 
     @override
     async def execute(self, data: StreamPayload):
-        payload: AnalyticsJobData = json.loads(data["payload"])
+        payload = json.loads(data["payload"])
 
+        if payload.get("kind") == "request":
+            await self.metrics_repo.record_request(payload)
+            return
+
+        await self.__record_model_call(payload)
+
+    async def __record_model_call(self, payload: AnalyticsJobData):
         model = payload["model_name"]
 
         # jobs queued before the succeeded field existed were all successes

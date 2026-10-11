@@ -14,7 +14,8 @@ class RankingRepositoryInterface(ABC):
         ...
 
     @abstractmethod
-    async def get_top_available(self, key: str, limit: int = 10) -> str | None:
+    async def get_top_available(self, key: str, candidates: list[str] | None = None) -> str | None:
+        """The best-ranked model that isn't benched; with candidates, only among those."""
         ...
 
     @abstractmethod
@@ -23,4 +24,9 @@ class RankingRepositoryInterface(ABC):
 
     @abstractmethod
     async def filter_available(self, model_names: list[str]) -> list[str]:
+        ...
+
+    @abstractmethod
+    async def seconds_until_available(self, model_names: list[str]) -> int | None:
+        """Seconds until the first benched model among these is back; None when none is benched."""
         ...

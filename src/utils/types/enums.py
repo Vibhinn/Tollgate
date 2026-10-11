@@ -43,9 +43,12 @@ class ConfigurationSection(StrEnum):
     GATEWAY = "gateway"
     REDIS = "redis"
     QDRANT = "qdrant"
+    ADMIN = "admin"
 
 
 class ConfigurationOption(StrEnum):
+    USERNAME = "username"
+    PASSWORD_HASH = "password_hash"
     ENDPOINT = "endpoint"
     API_KEY = "api_key"
     MODEL_NAME = "model_name"

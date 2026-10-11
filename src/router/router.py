@@ -103,6 +103,10 @@ class RouterRepository:
             if self.llm_repo_factory.get_repo(entry.get("provider")) is not None
         }
 
+    async def seconds_until_a_model_returns(self) -> int | None:
+        """Seconds until the first benched model is back in rotation; None when none is benched."""
+        return await self.router_adapter.seconds_until_available(list(self.available_models()))
+
     async def warm_up_latency_rankings(self) -> None:
         probe_message = [Message(role="user", content="Hi")]
         candidates = list(self.available_models())

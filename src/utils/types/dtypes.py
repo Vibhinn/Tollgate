@@ -42,6 +42,9 @@ class GenerationParams:
     stop: list[str] | None = None
 
 
+CACHE_OUTCOME = Literal["exact_hit", "semantic_hit", "miss"]
+
+
 @dataclass
 class LLMInvocationResult:
     content: str
@@ -49,7 +52,21 @@ class LLMInvocationResult:
     output_tokens: int
     finish_reason: FINISH_REASON = "stop"
     model: str = ""     # the routing alias that answered, set by the router
-    cached: bool = False
+    cache_outcome: CACHE_OUTCOME | None = None
+
+    @property
+    def cached(self) -> bool:
+        return self.cache_outcome in ("exact_hit", "semantic_hit")
+
+
+@dataclass(frozen=True)
+class TokenIdentity:
+    """Who a token belongs to, as the auth middleware hands it to the rest of the request."""
+    user_id: str        # team:name
+    team: str
+    name: str
+    token_id: str       # the short ID from `tollgate token list`
+    role: str
 
 
 @dataclass(frozen=True)
@@ -80,3 +97,18 @@ class AnalyticsJobData(TypedDict):
     latency_ms: float
     timestamp: str
     succeeded: bool     # False: the provider failed; only the model's error count changes
+
+
+class RequestEventData(TypedDict):
+    """One per HTTP request, pushed to the analytics stream by RequestMetricsMiddleware."""
+    kind: Literal["request"]
+    status: int
+    rejected_by: Literal["rate_limit", "backpressure"] | None
+    cache_outcome: CACHE_OUTCOME | None
+    model: str | None
+    input_tokens: int
+    output_tokens: int
+    team: str | None        # None when the request never got past auth
+    name: str | None
+    token_id: str | None
+    timestamp: str

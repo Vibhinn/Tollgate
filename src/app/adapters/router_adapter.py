@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.utils.config import ROUTING_TABLE
+
 if TYPE_CHECKING:
     from src.app.ports import JobQueueRepositoryInterface, RankingRepositoryInterface
     from src.app.intelligence import RoutingIntelligenceLayer
@@ -30,7 +32,9 @@ class RouterAdapter:
             from src.router.core import get_cheapest_model
             return await get_cheapest_model(self.llm_repo_factory, self.ranking_repo)
         if requirement == "fast":
-            return await self.ranking_repo.get_top_available("model:ranking:latency")
+            configured_models = [name for name, entry in ROUTING_TABLE.items()
+                                 if self.llm_repo_factory.get_repo(entry["provider"]) is not None]
+            return await self.ranking_repo.get_top_available("model:ranking:latency", configured_models)
         return None
 
     async def identify_model_intelligently(self, user_message: str) -> str | None:
@@ -41,3 +45,6 @@ class RouterAdapter:
 
     async def mark_model_unavailable(self, model_name: str, ttl: int) -> None:
         await self.ranking_repo.mark_unavailable(model_name, ttl)
+
+    async def seconds_until_available(self, model_names: list[str]) -> int | None:
+        return await self.ranking_repo.seconds_until_available(model_names)

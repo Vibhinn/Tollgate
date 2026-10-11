@@ -24,10 +24,11 @@ from src.app.ports import LLMRepositoryInterface
 from src.cache import RedisRepository, ResponseCache
 from src.cache.keys import CacheKeyBuilder
 from src.router.router import RouterRepository
-from src.utils.types import LLMInvocationResult
+from src.utils.types import LLMInvocationResult, TokenIdentity
 from tests.conftest import FakeConfig
 
 VALID_TOKEN = "tg_valid"
+ALICE = TokenIdentity(user_id="payments:alice", team="payments", name="alice", token_id="e72bb248c316", role="user")
 
 
 class FakeProvider(LLMRepositoryInterface):
@@ -70,7 +71,7 @@ def job_queue():
 @pytest.fixture
 def app(monkeypatch, provider, exact_cache, job_queue):
     token_store = AsyncMock()
-    token_store.get_user_id.side_effect = lambda token: "payments:alice" if token == VALID_TOKEN else None
+    token_store.get_identity.side_effect = lambda token: ALICE if token == VALID_TOKEN else None
     middleware_container = DependencyContainer()
     middleware_container.register(RedisRepository, lambda: token_store)
     monkeypatch.setattr(auth_module, "container", middleware_container)
@@ -80,7 +81,7 @@ def app(monkeypatch, provider, exact_cache, job_queue):
     router = RouterRepository(FakeProviderFactory(provider), router_adapter, FakeConfig())
     semantic_cache = AsyncMock()
     semantic_cache.search.return_value = None
-    response_cache = ResponseCache(exact_cache, AsyncMock(), semantic_cache, job_queue, CacheKeyBuilder(), AsyncMock())
+    response_cache = ResponseCache(exact_cache, AsyncMock(), semantic_cache, job_queue, CacheKeyBuilder())
     chat_adapter = ChatAdapter(response_cache, router)
 
     app = FastAPI()
@@ -250,3 +251,16 @@ async def test_an_unexpected_bug_raises_internal_server_error_with_an_openai_bod
     assert exc_info.value.status_code == 500
     assert exc_info.value.code == "internal_error"
     assert "something internal" not in str(exc_info.value)
+
+
+async def test_every_model_benched_raises_a_retryable_503_with_retry_after(client_for, app):
+    router = app.dependency_overrides[get_chat_adapter]().router_repo
+    router.router_adapter.get_best_model.return_value = None
+    router.router_adapter.seconds_until_available.return_value = 12
+
+    with pytest.raises(openai.InternalServerError) as exc_info:
+        await client_for().chat.completions.create(model="cheap", messages=[{"role": "user", "content": "hi"}])
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.code == "no_model_available"
+    assert exc_info.value.response.headers["Retry-After"] == "12"

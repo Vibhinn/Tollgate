@@ -30,8 +30,11 @@ CONFIGURATION_SECTIONS = Literal[
     ConfigurationSection.GATEWAY,
     ConfigurationSection.REDIS,
     ConfigurationSection.QDRANT,
+    ConfigurationSection.ADMIN,
 ]
 CONFIGURATION_OPTIONS = Literal[
+    ConfigurationOption.USERNAME,
+    ConfigurationOption.PASSWORD_HASH,
     ConfigurationOption.ENDPOINT,
     ConfigurationOption.API_KEY,
     ConfigurationOption.MODEL_NAME,

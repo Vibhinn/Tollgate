@@ -5,13 +5,12 @@ from typing import TYPE_CHECKING
 
 from starlette.datastructures import Headers, MutableHeaders
 
-from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY
+from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY, REJECTED_BY_STATE_KEY
 from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
 from src.app.exceptions.handlers import openai_error
 
-from src.utils.types import RedisAtomicCounters
 from src.app.injector import container
 
 if TYPE_CHECKING:
@@ -48,7 +47,7 @@ class RateLimitingMiddleware(BaseMiddleware):
         bucket = self.rate_limiter.get_user_bucket(user_id)
 
         if not bucket.request_allowed():
-            await self.redis_repo.increment(RedisAtomicCounters.RATE_LIMITED)
+            scope.setdefault("state", {})[REJECTED_BY_STATE_KEY] = "rate_limit"
             retry_after = bucket.get_reset_time() - time.time()
             await openai_error(
                 429, "Too many requests. Try again later.", "rate_limit_error", "rate_limit_exceeded",

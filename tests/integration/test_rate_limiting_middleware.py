@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+from src.utils.types import TokenIdentity
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -125,7 +127,8 @@ def test_bucket_is_looked_up_by_user_id_resolved_from_token(build_client, redis_
 
 def test_auth_and_rate_limiting_together_look_the_token_up_once(redis_repo, rate_limiter_store, test_container, monkeypatch):
     monkeypatch.setattr(auth_module, "container", test_container)
-    redis_repo.get_user_id.return_value = "resolved-user-42"
+    redis_repo.get_identity.return_value = TokenIdentity(user_id="resolved-user-42", team="t", name="n",
+                                                         token_id="abc", role="user")
     rate_limiter_store.get_user_bucket.return_value = FakeBucket(allowed=True)
 
     app = FastAPI()
@@ -141,5 +144,23 @@ def test_auth_and_rate_limiting_together_look_the_token_up_once(redis_repo, rate
     response = TestClient(app).get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 
     assert response.status_code == 200
-    redis_repo.get_user_id.assert_awaited_once_with("tg_good")
+    redis_repo.get_identity.assert_awaited_once_with("tg_good")
+    redis_repo.get_user_id.assert_not_awaited()
     rate_limiter_store.get_user_bucket.assert_called_once_with("resolved-user-42")
+
+
+def test_a_rate_limited_request_is_marked_for_the_metrics_event(redis_repo, rate_limiter_store):
+    rate_limiter_store.get_user_bucket.return_value = FakeBucket(allowed=False)
+    seen_state = {}
+
+    app = FastAPI()
+    app.add_middleware(RateLimitingMiddleware)
+
+    async def outer(scope, receive, send):   # stands in for RequestMetricsMiddleware
+        await app(scope, receive, send)
+        seen_state.update(scope.get("state", {}))
+
+    response = TestClient(outer).get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
+
+    assert response.status_code == 429
+    assert seen_state["rejected_by"] == "rate_limit"

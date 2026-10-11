@@ -62,10 +62,22 @@ async def test_get_top_available_returns_first_candidate_that_is_not_unavailable
     redis_conn.zrange.return_value = ["gpt-4o", "gpt-4o-mini", "claude-haiku-4-5"]
     redis_conn.mget.return_value = ["1", None, None]
 
-    result = await repo.get_top_available("model:ranking:latency", limit=10)
+    result = await repo.get_top_available("model:ranking:latency")
 
-    redis_conn.zrange.assert_awaited_once_with("model:ranking:latency", 0, 9)
+    redis_conn.zrange.assert_awaited_once_with("model:ranking:latency", 0, -1)
     assert result == "gpt-4o-mini"
+
+
+async def test_get_top_available_skips_ranked_models_that_are_no_longer_candidates(repo, redis_conn):
+    """Regression test: the ranking in Redis outlives the routing table, so a renamed model
+    (e.g. gemini-3.5-flash) or a removed self-hosted alias kept being picked by "fast" and 404'd."""
+    redis_conn.zrange.return_value = ["gemini-3.5-flash", "ollama-removed", "gemini-3.8-flash"]
+    redis_conn.mget.return_value = [None]
+
+    result = await repo.get_top_available("model:ranking:latency", ["gemini-3.8-flash", "gemini-3.5-flash-lite"])
+
+    redis_conn.mget.assert_awaited_once_with(["model:unavailable:gemini-3.8-flash"])
+    assert result == "gemini-3.8-flash"
 
 
 async def test_get_top_available_returns_none_when_every_candidate_is_unavailable(repo, redis_conn):
@@ -106,3 +118,21 @@ async def test_filter_available_checks_every_model_in_one_round_trip_and_keeps_o
 async def test_filter_available_skips_redis_for_an_empty_list(repo, redis_conn):
     assert await repo.filter_available([]) == []
     redis_conn.mget.assert_not_awaited()
+
+
+async def test_seconds_until_available_is_the_soonest_bench_to_expire(monkeypatch):
+    from fakeredis import FakeAsyncRedis
+    from src.cache.connection import CacheConnection
+    from src.cache.repository.redis_ranking_repository import RedisRankingRepository
+    redis = FakeAsyncRedis(decode_responses=True)
+    monkeypatch.setattr(CacheConnection, "get_connection", classmethod(lambda cls, t: redis))
+    repo = RedisRankingRepository()
+
+    assert await repo.seconds_until_available(["gpt-4o", "gemini-3.8-flash"]) is None   # nothing benched
+
+    await repo.mark_unavailable("gpt-4o", 600)
+    await repo.mark_unavailable("gemini-3.8-flash", 30)
+
+    assert await repo.seconds_until_available(["gpt-4o", "gemini-3.8-flash"]) == 30
+    assert await repo.seconds_until_available(["gpt-4o"]) == 600
+    assert await repo.seconds_until_available([]) is None

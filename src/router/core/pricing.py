@@ -13,6 +13,8 @@ PRICING_TABLE = {
     "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
 
     # Gemini
-    "gemini-3.5-flash": {"input": 0.10, "output": 0.40},
-    "gemini-3.5-flash-lite": {"input": 0.075, "output": 0.30},
+    # ai.google.dev/gemini-api/docs/pricing, checked 2026-10-11. gemini-3.8-flash is at an introductory
+    # price until 2026-12-31; from 2027-01-01 it is $1.50 / $7.50
+    "gemini-3.8-flash": {"input": 0.75, "output": 3.75},
+    "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50},
 }

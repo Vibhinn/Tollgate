@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.app.api import AuthenticationMiddleware, RateLimitingMiddleware, BackpressureMiddleware, RequestMetricsMiddleware
-from src.app.api import chat_api_router, models_api_router, metrics_api_router
+from src.app.api import chat_api_router, models_api_router, metrics_api_router, admin_api_router
 
 class MiddlewareInstallation:
     @staticmethod
@@ -15,6 +15,6 @@ class MiddlewareInstallation:
 class APIRouterInstallation:
     @staticmethod
     def install_api_routers(app: FastAPI):
-        routers = [chat_api_router, models_api_router, metrics_api_router]
+        routers = [chat_api_router, models_api_router, metrics_api_router, admin_api_router]
         for api_router in routers:
             app.include_router(api_router)

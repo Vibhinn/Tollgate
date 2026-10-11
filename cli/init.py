@@ -65,7 +65,8 @@ def _token_store() -> TokenStore:
 @click.option("--team", required=True, help="Team that owns the token, e.g. payments.")
 @click.option("--name", required=True, help="Person or app using the token, e.g. alice or invoice-bot.")
 @click.option("--ttl", default="90d", show_default=True, help="Lifetime: e.g. 30d, 12h, or never.")
-def token_create(team: str, name: str, ttl: str):
+@click.option("--admin", is_flag=True, help="Admin token: sees the full metrics breakdown per team, name and token.")
+def token_create(team: str, name: str, ttl: str, admin: bool):
     """Tokens with the same team and name share one rate limit and cache."""
     try:
         ttl_seconds = parse_ttl(ttl)
@@ -76,9 +77,10 @@ def token_create(team: str, name: str, ttl: str):
         sys.exit(1)
 
     verify_admin(require_config())
-    new_token, record = _token_store().create(team, name, ttl_seconds)
+    new_token, record = _token_store().create(team, name, ttl_seconds, admin=admin)
 
-    success(f"Token created for [bold]{record.team}:{record.name}[/bold] (ID {record.id}, expires {record.expires_at or 'never'})")
+    kind = "Admin token" if admin else "Token"
+    success(f"{kind} created for [bold]{record.team}:{record.name}[/bold] (ID {record.id}, expires {record.expires_at or 'never'})")
     console.print(f"\n  [bold]{new_token}[/bold]\n")
     warn("Copy it now. It is shown only once and cannot be recovered.")
 
@@ -92,10 +94,11 @@ def token_list(team: str | None):
         return
 
     table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 2))
-    for column in ("ID", "Team", "Name", "Created", "Expires"):
+    for column in ("ID", "Team", "Name", "Role", "Created", "Expires"):
         table.add_column(column)
     for record in records:
-        table.add_row(record.id, record.team, record.name, _short_date(record.created_at), _short_date(record.expires_at))
+        table.add_row(record.id, record.team, record.name, record.role, _short_date(record.created_at),
+                      _short_date(record.expires_at))
     console.print(table)
 
 

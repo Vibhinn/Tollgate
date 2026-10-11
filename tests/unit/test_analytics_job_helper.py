@@ -87,3 +87,15 @@ async def test_a_job_queued_before_the_succeeded_field_counts_as_a_success(helpe
     await helper.execute({"payload": json.dumps(payload)})
 
     metrics_repo.record_model_call.assert_awaited_once()
+
+
+async def test_a_request_event_goes_to_the_request_totals_only(helper, ranking_repo, metrics_repo):
+    event = {"kind": "request", "status": 200, "rejected_by": None, "cache_outcome": "miss", "model": "gpt-4o",
+             "input_tokens": 12, "output_tokens": 5, "team": "payments", "name": "alice",
+             "token_id": "e72bb248c316", "timestamp": "2026-10-11T00:00:00+00:00"}
+
+    await helper.execute({"payload": json.dumps(event)})
+
+    metrics_repo.record_request.assert_awaited_once_with(event)
+    metrics_repo.record_model_call.assert_not_awaited()
+    ranking_repo.update_score.assert_not_awaited()

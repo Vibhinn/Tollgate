@@ -21,3 +21,8 @@ memray-flamegraph-new_memory.html
 new_memory.bin
 tollgate.egg-info
 how_to_use.md
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo

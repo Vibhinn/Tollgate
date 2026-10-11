@@ -8,7 +8,7 @@ from ..injector import get_chat_adapter
 
 from ..adapters import ChatAdapter
 from .validators import ChatModel
-from .middleware.base import TOKEN_VALUE_STATE_KEY
+from .middleware.base import TOKEN_VALUE_STATE_KEY, COMPLETION_STATE_KEY
 from src.utils.types import LLMInvocationResult
 
 chat_api_router = APIRouter(prefix="/v1", tags=["chat"])
@@ -44,6 +44,8 @@ async def chat_complete(request: Request, user_requirement: ChatModel,
         user_id=request.scope.get("state", {}).get(TOKEN_VALUE_STATE_KEY),
         chat_request=user_requirement.to_chat_request(cache_ttl),
     )
+    # picked up by RequestMetricsMiddleware for the per-team / per-token usage metrics
+    setattr(request.state, COMPLETION_STATE_KEY, result)
     return JSONResponse(
         status_code=200,
         content=chat_completion(result),

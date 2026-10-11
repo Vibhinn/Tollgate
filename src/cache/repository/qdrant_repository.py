@@ -62,7 +62,7 @@ class QdrantRepository(VectorDBRepositoryInterface):
     @override
     async def ping(self) -> bool:
         try:
-            await self.client.get_collections()
+            await self.client.get_collections() #type: ignore
             return True
         except Exception:
             return False

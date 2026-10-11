@@ -20,7 +20,16 @@ async def test_picks_cheapest_by_average_of_input_and_output_price():
 
     result = await get_cheapest_model(factory, make_ranking_repo())
 
-    # gemini-3.5-flash-lite: (0.075 + 0.30) / 2 = 0.1875, cheapest in PRICING_TABLE
+    # gpt-4o-mini: (0.15 + 0.60) / 2 = 0.375, cheapest in PRICING_TABLE
+    assert result == "gpt-4o-mini"
+
+
+async def test_among_gemini_models_flash_lite_is_cheapest():
+    factory = make_factory({"gemini"})
+
+    result = await get_cheapest_model(factory, make_ranking_repo())
+
+    # gemini-3.5-flash-lite (0.30 + 2.50) / 2 = 1.40 vs gemini-3.8-flash (0.75 + 3.75) / 2 = 2.25
     assert result == "gemini-3.5-flash-lite"
 
 
@@ -42,17 +51,17 @@ async def test_returns_none_when_no_provider_is_configured():
 
 
 async def test_excludes_models_marked_unavailable():
-    factory = make_factory({"openai", "anthropic", "gemini"})
+    factory = make_factory({"gemini"})
 
     result = await get_cheapest_model(factory, make_ranking_repo(unavailable={"gemini-3.5-flash-lite"}))
 
-    # next cheapest after gemini-3.5-flash-lite is excluded: gemini-3.5-flash (0.10+0.40)/2 = 0.25
-    assert result == "gemini-3.5-flash"
+    # next cheapest after gemini-3.5-flash-lite is excluded: gemini-3.8-flash
+    assert result == "gemini-3.8-flash"
 
 
 async def test_returns_none_when_every_configured_model_is_unavailable():
     factory = make_factory({"gemini"})
-    all_gemini = {"gemini-3.5-flash", "gemini-3.5-flash-lite"}
+    all_gemini = {"gemini-3.8-flash", "gemini-3.5-flash-lite"}
 
     result = await get_cheapest_model(factory, make_ranking_repo(unavailable=all_gemini))
 

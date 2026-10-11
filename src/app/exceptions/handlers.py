@@ -14,7 +14,8 @@ def openai_error(status_code: int, message: str, error_type: str, code: str | No
 
 def status_handler(error_spec: ErrorSpec):
     async def handle(request, exc):
-        return openai_error(error_spec.status_code, str(exc), error_spec.type, error_spec.code)
+        return openai_error(error_spec.status_code, str(exc), error_spec.type, error_spec.code,
+                            headers=getattr(exc, "headers", None))
     return handle
 
 

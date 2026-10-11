@@ -205,6 +205,7 @@ Tokens are created by whoever runs the gateway, with the `tollgate` CLI on the g
 ```bash
 tollgate token create --team payments --name alice
 tollgate token create --team payments --name invoice-bot --ttl never
+tollgate token create --team ops --name dashboard --admin   # sees the full metrics breakdown
 # → tg_...   (shown once; Tollgate stores only its hash)
 
 tollgate token list                         # ID, team, name, created, expires
@@ -219,6 +220,7 @@ In Docker, prefix each command with `docker exec -it tollgate`.
 |---|---|---|
 | `--team`, `--name` | required | Lowercase letters, digits and `-` |
 | `--ttl` | `90d` | e.g. `30d`, `12h`, or `never` |
+| `--admin` | off | An admin token also sees the metrics per team, person and token. It works for chat requests like any other token |
 
 Tokens with the same team and name share one rate limit and one cache. Give each app or environment its own name (`invoice-bot`, `invoice-bot-staging`) to keep them separate. Two tokens for the same name are how you rotate a key: create the new one, switch your app over, revoke the old one.
 
@@ -279,17 +281,18 @@ Errors use OpenAI's body, `{"error": {"message", "type", "param", "code"}}`, so 
 |---|---|---|
 | `400` | — | Invalid request (`param` names the field), an unsupported feature, or the provider rejected it (e.g. context too long) |
 | `401` | `invalid_api_key` | Missing, invalid, expired or revoked Tollgate token |
-| `404` | `model_not_found` | Unknown model, provider not configured, or **no healthy model left for the policy** |
+| `404` | `model_not_found` | Unknown model, provider not configured, or a policy has no configured model to pick from |
 | `429` | `rate_limit_exceeded` / `upstream_rate_limited` | Tollgate's rate limit (`Retry-After` and `X-RateLimit-*` headers included) or the provider's |
 | `502` | `upstream_auth_failed`, `upstream_permission_denied`, `upstream_credit_exhausted` | Tollgate's provider key is invalid, lacks access to the model, or is out of credit. Not a 401: the client's token is fine. Fix it with `tollgate config --change` |
 | `502` | `upstream_server_error`, `upstream_connection_error` | Provider outage or unreachable |
 | `503` | `overloaded` | More requests in flight than `backpressure.max_in_flight`. Has `Retry-After`. Change it with `tollgate config --change` |
+| `503` | `no_model_available` | Every model the policy could use is benched after provider errors. `Retry-After` says when the first one is back; the OpenAI SDKs wait and retry on their own |
 
 Swagger docs at `http://localhost:13000/docs`.
 
 ### Metrics
 
-`GET /api/v1/metrics` is a [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. It needs a Tollgate token like any other endpoint, and sends one `metrics` event with a full snapshot every `interval` seconds (`?interval=1` to `60`, default `2`).
+`GET /api/v1/metrics` is a [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. It sends one `metrics` event with a full snapshot every `interval` seconds (`?interval=1` to `60`, default `2`). Any token sees the gateway-wide numbers; an **admin token** (`tollgate token create ... --admin`) also sees the breakdown per team, person and token.
 
 ```bash
 curl -N -H "Authorization: Bearer tg_<your_token>" "http://localhost:13000/api/v1/metrics?interval=2"
@@ -307,10 +310,22 @@ data: {"uptime_seconds": 8123, "process": {...}, "requests": {...}, "cache": {..
 | `cache` | `exact_hits`, `semantic_hits`, `misses`, `hit_rate` |
 | `models` | For every configured model: `requests`, `errors`, `input_tokens`, `output_tokens`, `avg_latency_ms`, and `available` (`false` while benched) |
 | `dependencies` | `redis` and `qdrant` (`ok` / `down`), `classifier` (`ok` / `degraded`) |
+| `teams`, `users`, `tokens` | **Admin tokens only.** One entry per team, per person or app (`team:name`), and per token ID from `tollgate token list`. Each has `requests`, `2xx`, `4xx`, `5xx`, `rate_limited`, `cache_exact_hits`, `cache_semantic_hits`, `cache_misses`, `input_tokens`, `output_tokens`, and `models` (requests and tokens per model). Token entries also have `team` and `name` |
 
+- **How the numbers are made:** every request pushes one event to the `analytics` Redis stream after its response is sent (status, cache outcome, model, tokens, and who sent it). A background worker adds the events up, and an aggregator builds the snapshot once per second. The endpoint only reads that snapshot, so the numbers lag by about a second and any number of dashboards costs the same as one.
 - **Counters are running totals** kept in Redis, so they survive restarts. A dashboard gets rates (requests per second, etc.) from the difference between two snapshots. `in_flight` is the only current value.
 - **A part that can't be read is `null`**, e.g. `requests`, `cache` and `models` when Redis is down, and the stream keeps going.
 - **The stream isn't counted** in `requests` and doesn't use a backpressure slot, so a dashboard left open has no effect on the gateway.
+**Admin login (for dashboards).** Instead of storing an admin token, a dashboard can log in with the admin username and password set during `tollgate init`:
+
+```bash
+curl -X POST http://localhost:13000/api/v1/admin/login \
+  -H "Content-Type: application/json" -d '{"username": "<admin username>", "password": "<admin password>"}'
+# → {"session_token": "tg_...", "token_type": "bearer", "expires_in": 43200}
+```
+
+The session token is an admin token valid for 12 hours: use it as the bearer token for `/api/v1/metrics` to get the full breakdown. Wrong credentials get `401` with code `invalid_credentials`. Sessions show up in `tollgate token list` as `admin:dashboard-session`, and `tollgate token revoke <ID>` ends one early. The endpoint has no attempt limit, so the strength of the admin password and the protection of `.tollgate.key` matter; use HTTPS when it's reachable over a network. A password changed with `tollgate config --change` applies after a restart.
+
 - **From a browser,** the built-in `EventSource` can't send an `Authorization` header. Read the stream with `fetch()` and a stream reader instead, or have your dashboard's server read it and pass it on. A page served from another origin also needs Tollgate to send CORS headers, which it doesn't yet.
 
 ### Environment variables
@@ -351,7 +366,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 3. **`"smart"` routing is CPU-bound and serialized.** On a classifier cache miss, the prompt goes to a 1.5B model on CPU, one at a time by default. On a small box, concurrent `"smart"` traffic queues behind it. That's what drove the 60s timeouts in the chaos run. Classifier answers are cached in Qdrant (similarity ≥ 0.7), so repeat-ish prompts skip it.
 4. **Each process spawns its own `llama-server` on fixed port 8091.** A second instance on the same host can't start its classifier and drops to "degraded" mode, where every `"smart"` request routes as `SIMPLE`.
 5. **Every request pays for an embedding.** When the exact cache misses, the semantic lookup runs, even if the request didn't set `cache_type`. model2vec runs on the default thread pool, so it competes for CPU with everything else. `"smart"` computes a second embedding for the classifier cache.
-6. **Provider throttling reduces your choices.** A provider `429` benches that model for 30s. Under sustained load, models get benched faster than they come back. Once none are left, policy requests return `404` instead of waiting or returning `503`. That was most of the failures in the chaos and cache-stress runs.
+6. **Provider throttling reduces your choices.** A provider `429` benches that model for 30s. Under sustained load, models get benched faster than they come back. Once none are left, policy requests get `503 no_model_available` with a `Retry-After` until the first model is back (they used to get a `404`, which was most of the failures in the chaos and cache-stress runs). Requests still fail during that window; Tollgate doesn't queue them.
 7. **Fallback goes one level deep.** If the fallback model also fails, the error goes straight back to the client.
 8. **Background jobs can be dropped.** Each stream is capped at ~1,000 entries (`MAXLEN ~1000`) and one consumer works through them in batches of 10. Under heavy write load, unprocessed cache and analytics jobs can be trimmed before they're handled. Jobs that fail 5 times move to `<stream>:dead`.
 9. **No streaming.** `stream: true` is rejected with a 400. Responses are fully buffered before they're returned, so long generations hold a connection and memory for their whole duration.

@@ -6,7 +6,7 @@ import build.build
 from build.build import Builder
 from src.app.exceptions import (
     ModelSemanticNotFound, BadRequestToModel, RateLimitedFromModelProvider, APIKeyInvalidOrExpired,
-    PermissionDeniedForModel, CreditExhaustion, ModelProviderServerError, APIError,
+    PermissionDeniedForModel, CreditExhaustion, ModelProviderServerError, APIError, NoHealthyModelAvailable,
 )
 from src.app.exceptions.handlers import status_handler, unexpected_error_handler
 from tests.conftest import FakeConfig
@@ -68,3 +68,11 @@ def test_an_unexpected_error_is_an_openai_500_that_does_not_leak_details(bug):
     assert response.json() == {"error": {
         "message": "The gateway hit an internal error.", "type": "server_error", "param": None, "code": "internal_error",
     }}
+
+
+def test_no_healthy_model_is_a_503_that_tells_the_client_when_to_retry(raise_through_app):
+    response = raise_through_app(NoHealthyModelAvailable("Every model is out of rotation. Retry in 12s.", 12))
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "12"
+    assert response.json()["error"]["code"] == "no_model_available"
