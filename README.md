@@ -13,13 +13,14 @@ Developers do not need to hardcode model names like `gpt-4o` or `claude-sonnet-4
 Most teams use one model, on one provider, forever — because switching takes effort. Tollgate makes the model an implementation detail.
 
 ```
-POST /api/v1/chat/completions
+POST /v1/chat/completions
 {
   "model": "cheap",          ← not a model name. a policy.
-  "messages": [...],
-  "max_tokens": 256
+  "messages": [...]
 }
 ```
+
+It speaks OpenAI's Chat Completions API, so the OpenAI SDKs and the frameworks built on them work by changing only `base_url` and `api_key`.
 
 Tollgate resolves `"cheap"` → the lowest-cost model that is configured and currently healthy, sends the request, returns the response, and silently updates its rankings for next time. If that model fails (rate limited, out of credits, provider outage), it's benched for a while and the request falls back to the next best one.
 
@@ -30,7 +31,7 @@ Tollgate resolves `"cheap"` → the lowest-cost model that is configured and cur
 ```
                          ┌─────────────────────────────────────────────┐
                          │                   CLIENT                    │
-                         │          POST /api/v1/chat/completions      │
+                         │          POST /v1/chat/completions          │
                          └────────────────────┬────────────────────────┘
                                               │
                          ┌────────────────────▼────────────────────────┐
@@ -221,58 +222,68 @@ In Docker, prefix each command with `docker exec -it tollgate`.
 
 Tokens with the same team and name share one rate limit and one cache. Give each app or environment its own name (`invoice-bot`, `invoice-bot-staging`) to keep them separate. Two tokens for the same name are how you rotate a key: create the new one, switch your app over, revoke the old one.
 
-**2. Call the gateway with a policy...**
+**2. Point the OpenAI SDK at Tollgate**
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:13000/v1", api_key="tg_<your_token>")
+
+completion = client.chat.completions.create(
+    model="cheap",                              # a policy, or pin a model: "claude-sonnet-4-6"
+    messages=[{"role": "user", "content": "Summarize this contract"}],
+    extra_body={"cache_type": "semantic"},      # Tollgate's own options go in extra_body
+)
+print(completion.model)                         # the model that actually answered
+print(completion.choices[0].message.content)
+```
+
+Anything built on the OpenAI SDK (LangChain's `ChatOpenAI`, LlamaIndex, chat UIs) works the same way with `base_url` set. `client.models.list()` returns the policies and every model you have a provider key for.
+
+With curl:
 
 ```bash
-curl -X POST http://localhost:13000/api/v1/chat/completions \
+curl -X POST http://localhost:13000/v1/chat/completions \
   -H "Authorization: Bearer tg_<your_token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "cheap",
-    "messages": [{"role": "user", "content": "Summarize this contract"}],
-    "max_tokens": 512,
-    "cache_type": "SEMANTIC"
-  }'
+  -d '{"model": "cheap", "messages": [{"role": "user", "content": "Summarize this contract"}], "cache_type": "semantic"}'
 ```
 
-**...or pin a model directly**
+**Request fields**
 
-```bash
-  -d '{"model": "claude-sonnet-4-6", "messages": [...], "max_tokens": 512}'
-```
+| Field | Default | Notes |
+|---|---|---|
+| `model` | required | `"cheap"`, `"fast"`, `"smart"`, any model in `src/utils/config/providers.py`, or a self-hosted alias from `config.yaml` |
+| `messages` | required | Roles `system`, `developer`, `user`, `assistant`. `content` is a string or a list of `{"type": "text"}` parts |
+| `max_completion_tokens` / `max_tokens` | provider default | Anthropic requires a value, so Tollgate sends 4096 when neither is set |
+| `temperature` | provider default | 0–2. Omit it for reasoning models, which reject non-default values |
+| `top_p`, `stop` | provider default | `stop` takes a string or up to 4 strings |
+| `cache_type` | none | Tollgate only. `"exact"` or `"semantic"`: stores the response for future hits |
+| `cache_match_score` | `0.9` | Tollgate only. Semantic similarity needed to count as a hit (0–1) |
 
-| Field | Required | Default | Notes |
-|---|---|---|---|
-| `model` | yes | — | `"cheap"`, `"fast"`, `"smart"`, any model in `src/utils/config/providers.py`, or a self-hosted alias from `config.yaml` |
-| `messages` | yes | — | `[{"role": ..., "content": ...}]` — see [Limitations](#functional-gaps) |
-| `max_tokens` | yes | — | Passed through to the provider |
-| `cache_type` | no | none | `"EXACT"` or `"SEMANTIC"` — stores the response for future hits |
-| `cache_match_score` | no | `0.9` | Semantic similarity needed to count as a hit (0–1) |
-| `temperature` | no | provider default | Sampling temperature, 0–2. Omit it for reasoning models, which reject non-default values |
+Other OpenAI fields (`user`, `seed`, `metadata`, a message's `name`, ...) are accepted and ignored. Fields Tollgate can't honour yet are **rejected with a 400** instead of being silently dropped: `stream: true`, `n` > 1, `tools` / `functions`, `response_format` other than `text`, image or audio content, and the `tool` role.
 
 **Response**
 
-```json
-{ "role": "assistant", "message": "..." }
-```
+A standard `chat.completion` object: `id`, `created`, `model`, `choices[0].message`, `choices[0].finish_reason` (`stop`, `length` or `content_filter`, mapped from every provider) and `usage`. `model` is the model that answered, so you can see what `"cheap"` picked. Responses cut off at the token limit (`length`) or filtered by the provider (`content_filter`) are never cached.
 
-Cache hits come back with `"role": "model"`.
+**Headers**
+- `X-Tollgate-Cache: hit | miss` on every response. A hit has `usage` at zero, and its `model` is the one you asked for.
+- `X-Cache-TTL: 3600` (request) — exact-cache TTL in seconds (default 3600). Must be a positive integer, otherwise the request gets a 400. With the OpenAI SDK, send it via `extra_headers`
 
-**Optional headers**
-- `X-Cache-TTL: 3600` — exact-cache TTL in seconds (default 3600)
+**Errors**
 
-**Status codes**
+Errors use OpenAI's body, `{"error": {"message", "type", "param", "code"}}`, so the SDKs raise the right exception and retry the right ones (`429` and `5xx`).
 
-| Code | Meaning |
-|---|---|
-| `400` | The provider rejected the request (e.g. context too long, unsupported parameter) |
-| `401` | Missing, invalid, expired or revoked token |
-| `404` | Unknown model, provider not configured, or **no healthy model left for the policy** |
-| `422` | Request validation failed (e.g. missing `max_tokens`, unknown model name) |
-| `429` | Tollgate's rate limit (`Retry-After` and `X-RateLimit-*` headers included) or the provider's |
-| `500` | Provider outage / API error |
-| `502` | Tollgate's provider key is invalid, lacks access to the model, or is out of credit. Fix it with `tollgate config --change` |
-| `503` | Gateway overloaded: more requests in flight than `backpressure.max_in_flight`. Has `Retry-After`. Change it with `tollgate config --change` |
+| Code | `code` | Meaning |
+|---|---|---|
+| `400` | — | Invalid request (`param` names the field), an unsupported feature, or the provider rejected it (e.g. context too long) |
+| `401` | `invalid_api_key` | Missing, invalid, expired or revoked Tollgate token |
+| `404` | `model_not_found` | Unknown model, provider not configured, or **no healthy model left for the policy** |
+| `429` | `rate_limit_exceeded` / `upstream_rate_limited` | Tollgate's rate limit (`Retry-After` and `X-RateLimit-*` headers included) or the provider's |
+| `502` | `upstream_auth_failed`, `upstream_permission_denied`, `upstream_credit_exhausted` | Tollgate's provider key is invalid, lacks access to the model, or is out of credit. Not a 401: the client's token is fine. Fix it with `tollgate config --change` |
+| `502` | `upstream_server_error`, `upstream_connection_error` | Provider outage or unreachable |
+| `503` | `overloaded` | More requests in flight than `backpressure.max_in_flight`. Has `Retry-After`. Change it with `tollgate config --change` |
 
 Swagger docs at `http://localhost:13000/docs`.
 
@@ -317,7 +328,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 6. **Provider throttling reduces your choices.** A provider `429` benches that model for 30s. Under sustained load, models get benched faster than they come back. Once none are left, policy requests return `404` instead of waiting or returning `503`. That was most of the failures in the chaos and cache-stress runs.
 7. **Fallback goes one level deep.** If the fallback model also fails, the error goes straight back to the client.
 8. **Background jobs can be dropped.** Each stream is capped at ~1,000 entries (`MAXLEN ~1000`) and one consumer works through them in batches of 10. Under heavy write load, unprocessed cache and analytics jobs can be trimmed before they're handled. Jobs that fail 5 times move to `<stream>:dead`.
-9. **No streaming.** Responses are fully buffered before they're returned, so long generations hold a connection and memory for their whole duration.
+9. **No streaming.** `stream: true` is rejected with a 400. Responses are fully buffered before they're returned, so long generations hold a connection and memory for their whole duration.
 10. **The semantic cache grows forever.** Qdrant points have no TTL (`X-Cache-TTL` only applies to the exact cache), and nothing evicts them.
 11. **Connection pools are capped.** Redis allows 1,000 connections with 3s socket timeouts. Qdrant's gRPC pool also allows 1,000. A Redis stall longer than 3s fails auth for every request in flight.
 12. **Startup isn't free.** Boot waits up to 30s for `llama-server`, then sends a real 1-token request to every configured model (small, but real, provider spend on every restart).
@@ -325,7 +336,7 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 
 ### Functional gaps
 
-- **The response shape isn't OpenAI-compatible yet** (`{"role", "message"}` instead of `choices[]`), so OpenAI SDKs can't use Tollgate as a drop-in `base_url`.
+- **OpenAI compatibility covers Chat Completions without streaming or tools.** Streaming, tool / function calling, JSON mode, image inputs and `/v1/embeddings` aren't supported yet; requests that use them get a 400. The Responses and Assistants APIs aren't planned.
 - **`"cheap"` uses static list prices** from `pricing.py`, not observed spend. Self-hosted models aren't in the pricing table, so `"cheap"` never picks them.
 
 ---
@@ -352,7 +363,8 @@ The chaos run was taken *before* the classifier concurrency cap (`TOLLGATE_CLASS
 | 16 | Docker image on GHCR (amd64 + arm64) | ✅ Done |
 | 17 | Analytics / metrics endpoint (data collected, API stub) | 🔧 In Progress |
 | 18 | Streaming responses (SSE / chunked transfer) | 🔧 In Progress |
-| 19 | OpenAI-compatible request **and response** shape (true drop-in) | 🔧 In Progress |
+| 19 | OpenAI-compatible Chat Completions (`/v1/chat/completions`, `/v1/models`, OpenAI errors) | ✅ Done |
+| 19b | Tool calling, JSON mode, image inputs, `/v1/embeddings` | 📋 Planned |
 | 20 | Redis-backed, per-user rate limiter (multi-instance safe) | 📋 Planned |
 | 21 | Multi-worker / horizontally scalable deployment | 📋 Planned |
 | 22 | Full conversation history + `temperature` passthrough | ✅ Done |
@@ -384,7 +396,7 @@ Tollgate/
 ├── src/
 │   ├── app/
 │   │   ├── adapters/            # ChatAdapter, RouterAdapter, GenerateAccessTokenAdapter
-│   │   ├── api/                 # Route handlers (chat, generate, metrics stub)
+│   │   ├── api/                 # /v1 routes (chat completions, models), OpenAI error format, metrics stub
 │   │   │   ├── limiter/         # Token bucket + per-key bucket store
 │   │   │   ├── middleware/      # Auth + rate limiting, exempt paths
 │   │   │   └── validators/      # Pydantic request models

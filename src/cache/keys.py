@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.utils.types import Message
+    from src.utils.types import Message, GenerationParams
 
 EXACT_CACHE_KEY_PREFIX = "cache:exact:"
 
@@ -20,9 +20,10 @@ class CacheKeys:
 
 class CacheKeyBuilder:
 
-    def build_cache_keys(self, user_id: str | None, model: str, temperature: float | None, messages: list[Message]) -> CacheKeys:
+    def build_cache_keys(self, user_id: str | None, model: str, params: GenerationParams, messages: list[Message]) -> CacheKeys:
         prompt_index = max(index for index, message in enumerate(messages) if message.role == "user")
-        scope = {"user_id": user_id, "model": model, "temperature": temperature}
+        # every generation param changes the answer (max_tokens can cut it short, stop can end it early)
+        scope = {"user_id": user_id, "model": model, "params": asdict(params)}
         serialized = [message.model_dump() for message in messages]
 
         context = serialized[:prompt_index] + serialized[prompt_index + 1:]

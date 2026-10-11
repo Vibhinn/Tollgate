@@ -95,7 +95,7 @@ def test_request_over_limit_is_shed_with_retry_after(build_client, redis_repo):
     response = client.get("/api/v1/chat/completions")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Gateway is overloaded. Try again shortly."}
+    assert response.json() == {"error": {"message": "Gateway is overloaded. Try again shortly.", "type": "server_error", "param": None, "code": "overloaded"}}
     retry_after = int(response.headers["Retry-After"])
     assert backpressure_module.BASE_RETRY_AFTER_SECONDS <= retry_after <= (
         backpressure_module.BASE_RETRY_AFTER_SECONDS + backpressure_module.RETRY_AFTER_JITTER_SECONDS

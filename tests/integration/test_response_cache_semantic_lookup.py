@@ -1,6 +1,6 @@
 """Regression test for the semantic-cache miss path, wired to the real
 QdrantRepository (only the network client mocked) rather than an adapter-level
-mock. This used to crash: ChatAdapter.check_cache called
+mock. This used to crash: the cache lookup (then ChatAdapter.check_cache, now ResponseCache.lookup) called
 self.vector_db_repo.search(embedding) with a single positional argument,
 which silently bound to `collection` instead of `embedding` - see git history
 for the original test_semantic_cache_miss_crashes_with_the_real_qdrant_repository,
@@ -12,21 +12,9 @@ import pytest
 
 from src.cache.connection import CacheConnection
 from src.cache.repository.qdrant_repository import QdrantRepository
-from src.app.adapters.chat_adapter import ChatAdapter
-from src.cache.keys import CacheKeys
+from src.cache import ResponseCache
+from src.cache.keys import CacheKeys, CacheKeyBuilder
 from src.utils.types import VectorRepositoryCollection
-
-
-class FakeRepoManager:
-    def __init__(self, vector_cache):
-        self._repos = {
-            "embedding": AsyncMock(),
-            "vector_cache": vector_cache,
-            "exact_cache": AsyncMock(),
-        }
-
-    def get_repo(self, repo_type):
-        return self._repos[repo_type]
 
 
 @pytest.fixture
@@ -44,14 +32,15 @@ def real_qdrant_repository(qdrant_network_client):
 async def test_semantic_cache_miss_queries_qdrant_with_the_real_repository(
     real_qdrant_repository, qdrant_network_client, fake_embedding
 ):
-    repo_manager = FakeRepoManager(real_qdrant_repository)
-    repo_manager.get_repo("exact_cache").search.return_value = None
-    repo_manager.get_repo("embedding").create_vector_embeddings.return_value = fake_embedding
+    exact_cache = AsyncMock()
+    exact_cache.search.return_value = None
+    embedding_repo = AsyncMock()
+    embedding_repo.create_vector_embeddings.return_value = fake_embedding
     qdrant_network_client.query_points.return_value.points = []
 
-    adapter = ChatAdapter(repo_manager, AsyncMock(), AsyncMock())
+    response_cache = ResponseCache(exact_cache, embedding_repo, real_qdrant_repository, AsyncMock(), CacheKeyBuilder())
 
-    result = await adapter.check_cache(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
+    result = await response_cache.lookup(CacheKeys(exact_key="cache:exact:abc", context_hash="ctx", prompt="hello"), 0.9)
 
     call_kwargs = qdrant_network_client.query_points.await_args.kwargs
     assert call_kwargs["collection_name"] == VectorRepositoryCollection.SEMANTIC_CACHE

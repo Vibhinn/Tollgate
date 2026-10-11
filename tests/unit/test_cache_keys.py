@@ -1,13 +1,13 @@
 from src.cache.keys import CacheKeyBuilder, EXACT_CACHE_KEY_PREFIX
-from src.utils.types import Message
+from src.utils.types import Message, GenerationParams
 
 
 def conversation(*turns: tuple[str, str]) -> list[Message]:
     return [Message(role=role, content=content) for role, content in turns]
 
 
-def keys(messages, user_id="user-1", model="cheap", temperature=None):
-    return CacheKeyBuilder().build_cache_keys(user_id=user_id, model=model, temperature=temperature, messages=messages)
+def keys(messages, user_id="user-1", model="cheap", params=GenerationParams()):
+    return CacheKeyBuilder().build_cache_keys(user_id=user_id, model=model, params=params, messages=messages)
 
 
 def test_same_request_gives_the_same_keys():
@@ -47,11 +47,19 @@ def test_changing_the_system_prompt_changes_both_keys():
     assert keys(french).context_hash != keys(german).context_hash
 
 
-def test_keys_are_scoped_per_user_model_and_temperature():
+def test_keys_are_scoped_per_user_model_and_generation_params():
     messages = conversation(("user", "hi"))
     baseline = keys(messages)
 
-    for other in (keys(messages, user_id="user-2"), keys(messages, model="fast"), keys(messages, temperature=0.2)):
+    others = (
+        keys(messages, user_id="user-2"),
+        keys(messages, model="fast"),
+        keys(messages, params=GenerationParams(temperature=0.2)),
+        keys(messages, params=GenerationParams(max_tokens=10)),
+        keys(messages, params=GenerationParams(stop=["\n"])),
+        keys(messages, params=GenerationParams(top_p=0.5)),
+    )
+    for other in others:
         assert other.exact_key != baseline.exact_key
         assert other.context_hash != baseline.context_hash
 

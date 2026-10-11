@@ -4,12 +4,12 @@ import time
 from typing import TYPE_CHECKING
 
 from starlette.datastructures import Headers, MutableHeaders
-from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY
 from ..limiter.store import RateLimiterStore
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
+from src.app.exceptions.handlers import openai_error
 
 from src.utils.types import RedisAtomicCounters
 from src.app.injector import container
@@ -39,10 +39,8 @@ class RateLimitingMiddleware(BaseMiddleware):
 
         if not auth_header:
             await self.redis_repo.increment(RedisAtomicCounters.REJECTED)
-            await JSONResponse(
-                status_code=401,
-                content={"detail":"No auth token in Header."}
-            )(scope, receive, send)
+            await openai_error(401, "Missing bearer token in the Authorization header.", "invalid_request_error",
+                               "invalid_api_key")(scope, receive, send)
             return
 
         user_id: str | None = scope.get("state", {}).get(TOKEN_VALUE_STATE_KEY)
@@ -54,9 +52,8 @@ class RateLimitingMiddleware(BaseMiddleware):
         if not bucket.request_allowed():
             await self.redis_repo.increment(RedisAtomicCounters.RATE_LIMITED)
             retry_after = bucket.get_reset_time() - time.time()
-            await JSONResponse(
-                status_code=429,
-                content={"detail": "Too many requests. Try again later."},
+            await openai_error(
+                429, "Too many requests. Try again later.", "rate_limit_error", "rate_limit_exceeded",
                 headers={
                     "Retry-After": str(max(1, int(retry_after))),
                     "X-RateLimit-Limit": str(bucket.max_tokens),

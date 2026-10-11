@@ -11,14 +11,14 @@ from src.app.exceptions import (
 )
 from src.llm.connection import LLMConnection
 from src.llm.repository.openai_repository import OpenAIRepository
-from src.utils.types import Message
+from src.utils.types import Message, GenerationParams
 
 HELLO = [Message(role="user", content="hello")]
 
 
-def make_raw_response(text="hi there", prompt_tokens=12, completion_tokens=34):
+def make_raw_response(text="hi there", prompt_tokens=12, completion_tokens=34, finish_reason="stop"):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=text))],
+        choices=[SimpleNamespace(message=SimpleNamespace(content=text), finish_reason=finish_reason)],
         usage=SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens),
     )
 
@@ -34,7 +34,7 @@ def openai_client(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(openai_client):
     repo = OpenAIRepository()
 
-    result = await repo.invoke(HELLO, "gpt-4o", 4096)
+    result = await repo.invoke(HELLO, "gpt-4o", GenerationParams(max_tokens=4096))
 
     openai_client.chat.completions.create.assert_awaited_once_with(
         model="gpt-4o",
@@ -61,7 +61,7 @@ async def test_invoke_sends_the_whole_conversation_and_temperature(openai_client
     ]
     repo = OpenAIRepository()
 
-    await repo.invoke(messages, "gpt-4o", 4096, temperature=0.2)
+    await repo.invoke(messages, "gpt-4o", GenerationParams(max_tokens=4096, temperature=0.2))
 
     openai_client.chat.completions.create.assert_awaited_once_with(
         model="gpt-4o",
@@ -94,7 +94,7 @@ async def test_invoke_maps_provider_errors_to_domain_exceptions(
     repo = OpenAIRepository()
 
     with pytest.raises(expected_domain_exception) as exc_info:
-        await repo.invoke(HELLO, "gpt-4o", 4096)
+        await repo.invoke(HELLO, "gpt-4o", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
 
@@ -107,6 +107,29 @@ async def test_invoke_maps_connection_error_to_api_error(openai_client):
     repo = OpenAIRepository()
 
     with pytest.raises(APIError) as exc_info:
-        await repo.invoke(HELLO, "gpt-4o", 4096)
+        await repo.invoke(HELLO, "gpt-4o", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
+
+
+async def test_invoke_leaves_unset_params_to_the_provider_and_passes_the_rest(openai_client):
+    repo = OpenAIRepository()
+
+    await repo.invoke(HELLO, "gpt-4o", GenerationParams(top_p=0.5, stop=["END"]))
+
+    openai_client.chat.completions.create.assert_awaited_once_with(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "hello"}],
+        top_p=0.5,
+        stop=["END"],
+    )
+
+
+@pytest.mark.parametrize("raw, expected", [("stop", "stop"), ("length", "length"), ("content_filter", "content_filter"),
+                                           ("tool_calls", "stop"), (None, "stop")])
+async def test_invoke_reports_the_finish_reason(openai_client, raw, expected):
+    openai_client.chat.completions.create.return_value = make_raw_response(finish_reason=raw)
+
+    result = await OpenAIRepository().invoke(HELLO, "gpt-4o", GenerationParams())
+
+    assert result.finish_reason == expected

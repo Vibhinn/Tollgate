@@ -11,14 +11,15 @@ from src.app.exceptions import (
 )
 from src.llm.connection import LLMConnection
 from src.llm.repository.gemini_repository import GeminiRepository
-from src.utils.types import Message
+from src.utils.types import Message, GenerationParams
 
 HELLO = [Message(role="user", content="hello")]
 
 
-def make_raw_response(text="hi there", prompt_token_count=12, candidates_token_count=34):
+def make_raw_response(text="hi there", prompt_token_count=12, candidates_token_count=34, finish_reason=types.FinishReason.STOP):
     return SimpleNamespace(
         text=text,
+        candidates=[SimpleNamespace(finish_reason=finish_reason)],
         usage_metadata=SimpleNamespace(
             prompt_token_count=prompt_token_count,
             candidates_token_count=candidates_token_count,
@@ -37,12 +38,13 @@ def gemini_client(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(gemini_client):
     repo = GeminiRepository()
 
-    result = await repo.invoke(HELLO, "gemini-2.0-flash", 4096)
+    result = await repo.invoke(HELLO, "gemini-2.0-flash", GenerationParams(max_tokens=4096))
 
     gemini_client.aio.models.generate_content.assert_awaited_once_with(
         model="gemini-2.0-flash",
         contents=[types.Content(role="user", parts=[types.Part(text="hello")])],
-        config=types.GenerateContentConfig(max_output_tokens=4096, temperature=None, system_instruction=None),
+        config=types.GenerateContentConfig(max_output_tokens=4096, temperature=None, top_p=None, stop_sequences=None,
+                                          system_instruction=None),
     )
     assert result.content == "hi there"
     assert result.input_tokens == 12
@@ -58,7 +60,7 @@ async def test_invoke_sends_the_whole_conversation_with_system_instruction_and_t
     ]
     repo = GeminiRepository()
 
-    await repo.invoke(messages, "gemini-2.0-flash", 4096, temperature=0.2)
+    await repo.invoke(messages, "gemini-2.0-flash", GenerationParams(max_tokens=4096, temperature=0.2))
 
     gemini_client.aio.models.generate_content.assert_awaited_once_with(
         model="gemini-2.0-flash",
@@ -68,7 +70,7 @@ async def test_invoke_sends_the_whole_conversation_with_system_instruction_and_t
             types.Content(role="user", parts=[types.Part(text="how are you?")]),
         ],
         config=types.GenerateContentConfig(
-            max_output_tokens=4096, temperature=0.2, system_instruction="Reply in French."
+            max_output_tokens=4096, temperature=0.2, top_p=None, stop_sequences=None, system_instruction="Reply in French."
         ),
     )
 
@@ -88,7 +90,7 @@ async def test_invoke_maps_client_errors_to_domain_exceptions(gemini_client, sta
     repo = GeminiRepository()
 
     with pytest.raises(expected_domain_exception) as exc_info:
-        await repo.invoke(HELLO, "gemini-2.0-flash", 4096)
+        await repo.invoke(HELLO, "gemini-2.0-flash", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
 
@@ -99,6 +101,38 @@ async def test_invoke_maps_server_error_to_model_provider_server_error(gemini_cl
     repo = GeminiRepository()
 
     with pytest.raises(ModelProviderServerError) as exc_info:
-        await repo.invoke(HELLO, "gemini-2.0-flash", 4096)
+        await repo.invoke(HELLO, "gemini-2.0-flash", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
+
+
+async def test_invoke_passes_top_p_and_stop_sequences(gemini_client):
+    await GeminiRepository().invoke(HELLO, "gemini-2.0-flash", GenerationParams(top_p=0.5, stop=["END"]))
+
+    config = gemini_client.aio.models.generate_content.await_args.kwargs["config"]
+    assert config.top_p == 0.5
+    assert config.stop_sequences == ["END"]
+
+
+@pytest.mark.parametrize("finish_reason, expected", [
+    (types.FinishReason.STOP, "stop"),
+    (types.FinishReason.MAX_TOKENS, "length"),
+    (types.FinishReason.SAFETY, "content_filter"),
+    (types.FinishReason.RECITATION, "content_filter"),
+])
+async def test_invoke_maps_the_finish_reason(gemini_client, finish_reason, expected):
+    gemini_client.aio.models.generate_content.return_value = make_raw_response(finish_reason=finish_reason)
+
+    result = await GeminiRepository().invoke(HELLO, "gemini-2.0-flash", GenerationParams())
+
+    assert result.finish_reason == expected
+
+
+async def test_invoke_returns_empty_content_when_the_answer_was_blocked(gemini_client):
+    gemini_client.aio.models.generate_content.return_value = make_raw_response(
+        text=None, candidates_token_count=None, finish_reason=types.FinishReason.SAFETY,
+    )
+
+    result = await GeminiRepository().invoke(HELLO, "gemini-2.0-flash", GenerationParams())
+
+    assert (result.content, result.output_tokens, result.finish_reason) == ("", 0, "content_filter")

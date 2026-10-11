@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 class ModelSemanticNotFound(Exception):
     pass
 
@@ -30,3 +32,9 @@ class SemanticCacheNotReachable(CacheNotReachable):
 
 class KVCacheNotReachable(CacheNotReachable):
     pass
+
+@dataclass(frozen=True)
+class ErrorSpec:
+    status_code: int
+    type: str
+    code: str | None = None

@@ -49,7 +49,7 @@ def test_missing_authorization_header_returns_401(client):
     response = client.get("/api/v1/chat/completions")
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Token not sent in header"}
+    assert response.json() == {"error": {"message": "Missing bearer token in the Authorization header.", "type": "invalid_request_error", "param": None, "code": "invalid_api_key"}}
 
 
 def test_non_bearer_authorization_header_returns_401(client):
@@ -64,7 +64,7 @@ def test_invalid_token_returns_401(client, redis_repo):
     response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_bad"})
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid token"}
+    assert response.json() == {"error": {"message": "Invalid, expired or revoked Tollgate token.", "type": "invalid_request_error", "param": None, "code": "invalid_api_key"}}
     redis_repo.get_user_id.assert_awaited_once_with("tg_bad")
 
 

@@ -6,7 +6,9 @@ from src.app.exceptions import (
     ModelSemanticNotFound, CreditExhaustion, RateLimitedFromModelProvider, BadRequestToModel, APIError,
 )
 from src.router.router import RouterRepository
-from src.utils.types import LLMInvocationResult, Message
+from src.utils.types import LLMInvocationResult, Message, GenerationParams
+
+PARAMS = GenerationParams(max_tokens=4096)
 
 
 def make_model_response(text="the answer", input_tokens=10, output_tokens=20):
@@ -37,10 +39,10 @@ async def test_invoke_model_returns_llm_text_and_records_analytics(router_reposi
     _, llm_repo = llm_repo_factory
     messages = [Message(role="user", content="hello there")]
 
-    result = await router_repository.invoke_model("gpt-4o", messages, 4096)
+    result = await router_repository.invoke_model("gpt-4o", messages, PARAMS)
 
-    assert result == "the answer"
-    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", 4096, None)
+    assert result.content == "the answer"
+    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", PARAMS)
 
 
 async def test_invoke_model_passes_the_whole_conversation_and_temperature(router_repository, llm_repo_factory):
@@ -52,9 +54,10 @@ async def test_invoke_model_passes_the_whole_conversation_and_temperature(router
         Message(role="user", content="how are you?"),
     ]
 
-    await router_repository.invoke_model("gpt-4o", messages, 4096, temperature=0.2)
+    params = GenerationParams(max_tokens=4096, temperature=0.2)
+    await router_repository.invoke_model("gpt-4o", messages, params)
 
-    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", 4096, 0.2)
+    llm_repo.invoke.assert_awaited_once_with(messages, "gpt-4o", params)
 
 
 async def test_smart_fallback_classifies_the_last_user_message_not_the_last_message(
@@ -68,10 +71,10 @@ async def test_smart_fallback_classifies_the_last_user_message_not_the_last_mess
         Message(role="assistant", content="Sure, the proof"),
     ]
 
-    await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="smart", temperature=0.2)
+    await router_repository.invoke_model("gpt-4o", messages, PARAMS, model_selection_policy="smart")
 
     router_adapter.identify_model_intelligently.assert_awaited_once_with("prove this theorem")
-    assert llm_repo.invoke.await_args_list[1].args == (messages, "gpt-4o-mini", 4096, 0.2)
+    assert llm_repo.invoke.await_args_list[1].args == (messages, "gpt-4o-mini", PARAMS)
 
 
 async def test_invoke_model_sends_the_real_provider_model_id_not_the_routing_alias(
@@ -90,9 +93,9 @@ async def test_invoke_model_sends_the_real_provider_model_id_not_the_routing_ali
     }
     messages = [Message(role="user", content="hello there")]
 
-    await router_repository.invoke_model("ollama-llama3", messages, 4096)
+    await router_repository.invoke_model("ollama-llama3", messages, PARAMS)
 
-    llm_repo.invoke.assert_awaited_once_with(messages, "llama3", 4096, None)
+    llm_repo.invoke.assert_awaited_once_with(messages, "llama3", PARAMS)
 
     router_adapter.add_job_to_queue.assert_awaited_once()
     call_args, call_kwargs = router_adapter.add_job_to_queue.await_args
@@ -110,7 +113,7 @@ async def test_invoke_model_returns_empty_string_when_provider_not_configured(ro
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(ModelSemanticNotFound):
-        await router_repository.invoke_model("claude-sonnet-4-6", messages, 4096)
+        await router_repository.invoke_model("claude-sonnet-4-6", messages, PARAMS)
 
     router_adapter.add_job_to_queue.assert_not_awaited()
 
@@ -123,7 +126,7 @@ async def test_invoke_model_raises_cleanly_when_model_is_not_in_routing_table(ro
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(ModelSemanticNotFound):
-        await router_repository.invoke_model("this-model-does-not-exist", messages, 4096)
+        await router_repository.invoke_model("this-model-does-not-exist", messages, PARAMS)
 
     router_adapter.add_job_to_queue.assert_not_awaited()
 
@@ -167,7 +170,7 @@ async def test_invoke_model_blocklists_and_does_not_retry_an_explicit_model_requ
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(CreditExhaustion):
-        await router_repository.invoke_model("gpt-4o", messages, 4096)
+        await router_repository.invoke_model("gpt-4o", messages, PARAMS)
 
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
     router_adapter.get_best_model.assert_not_awaited()
@@ -182,9 +185,11 @@ async def test_invoke_model_falls_back_to_next_best_model_for_auto_routed_reques
     router_adapter.get_best_model.return_value = "gpt-4o-mini"
     messages = [Message(role="user", content="hello")]
 
-    result = await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+    result = await router_repository.invoke_model("gpt-4o", messages, PARAMS, model_selection_policy="cheap")
 
-    assert result == "fallback answer"
+    assert result.content == "fallback answer"
+    # the response reports the model that actually answered
+    assert result.model == "gpt-4o-mini"
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
     router_adapter.get_best_model.assert_awaited_once_with("cheap")
     router_adapter.add_job_to_queue.assert_awaited_once()
@@ -199,7 +204,7 @@ async def test_invoke_model_raises_when_fallback_resolves_to_the_same_dead_model
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(CreditExhaustion):
-        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+        await router_repository.invoke_model("gpt-4o", messages, PARAMS, model_selection_policy="cheap")
 
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", 600)
 
@@ -213,7 +218,7 @@ async def test_invoke_model_raises_when_no_fallback_is_available(
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(CreditExhaustion):
-        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+        await router_repository.invoke_model("gpt-4o", messages, PARAMS, model_selection_policy="cheap")
 
 
 @pytest.mark.parametrize("exception_cls, expected_ttl", [
@@ -229,7 +234,7 @@ async def test_invoke_model_uses_a_shorter_ttl_for_transient_failures(
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(exception_cls):
-        await router_repository.invoke_model("gpt-4o", messages, 4096)
+        await router_repository.invoke_model("gpt-4o", messages, PARAMS)
 
     router_adapter.mark_model_unavailable.assert_awaited_once_with("gpt-4o", expected_ttl)
 
@@ -244,7 +249,7 @@ async def test_invoke_model_does_not_blocklist_on_request_specific_errors(
     messages = [Message(role="user", content="hello")]
 
     with pytest.raises(BadRequestToModel):
-        await router_repository.invoke_model("gpt-4o", messages, 4096, model_selection_policy="cheap")
+        await router_repository.invoke_model("gpt-4o", messages, PARAMS, model_selection_policy="cheap")
 
     router_adapter.mark_model_unavailable.assert_not_awaited()
     router_adapter.get_best_model.assert_not_awaited()
@@ -266,7 +271,7 @@ async def test_warm_up_latency_rankings_sends_a_minimal_probe_to_each_configured
     assert called_models == {"gpt-4o", "gpt-4o-mini"}
     for call in llm_repo.invoke.await_args_list:
         assert call.args[0] == [Message(role="user", content="Hi")]
-        assert call.args[2] == 1
+        assert call.args[2] == GenerationParams(max_tokens=1)
 
 
 async def test_warm_up_latency_rankings_skips_unconfigured_models(router_repository, llm_repo_factory):
@@ -280,7 +285,7 @@ async def test_warm_up_latency_rankings_skips_unconfigured_models(router_reposit
 
     await router_repository.warm_up_latency_rankings()
 
-    llm_repo.invoke.assert_awaited_once_with([Message(role="user", content="Hi")], "gpt-4o", 1, None)
+    llm_repo.invoke.assert_awaited_once_with([Message(role="user", content="Hi")], "gpt-4o", GenerationParams(max_tokens=1))
 
 
 async def test_warm_up_latency_rankings_continues_past_a_failing_probe(router_repository, llm_repo_factory):
@@ -309,3 +314,35 @@ async def test_warm_up_latency_rankings_does_nothing_when_nothing_is_configured(
     await router_repository.warm_up_latency_rankings()  # must not raise
 
     llm_repo.invoke.assert_not_awaited()
+
+
+async def test_invoke_model_reports_the_routing_alias_that_answered(router_repository, llm_repo_factory):
+    _, llm_repo = llm_repo_factory
+    llm_repo.invoke.return_value = LLMInvocationResult("cut off", 10, 20, finish_reason="length")
+
+    result = await router_repository.invoke_model("gpt-4o", [Message(role="user", content="hello")], PARAMS)
+
+    assert (result.model, result.finish_reason) == ("gpt-4o", "length")
+
+
+def test_available_models_lists_only_models_whose_provider_is_configured(router_repository):
+    router_repository.routing_table = {
+        "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
+        "claude-sonnet-4-6": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
+    }
+
+    assert router_repository.available_models() == {"gpt-4o": "openai"}
+
+
+@pytest.mark.parametrize("model_name, expected", [
+    ("gpt-4o", True),
+    ("claude-sonnet-4-6", False),   # in the routing table, but Anthropic isn't configured
+    ("gpt-9", False),               # not in the routing table at all
+])
+def test_has_model_accepts_only_models_whose_provider_is_configured(router_repository, model_name, expected):
+    router_repository.routing_table = {
+        "gpt-4o": {"provider": "openai", "model": "gpt-4o"},
+        "claude-sonnet-4-6": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
+    }
+
+    assert router_repository.has_model(model_name) is expected

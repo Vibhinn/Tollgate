@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from starlette.datastructures import Headers
-from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware, TOKEN_VALUE_STATE_KEY
 from src.cache import RedisRepository
 from .exemptions import EXEMPT_PATHS
+from src.app.exceptions.handlers import openai_error
 from src.app.injector import container
 
 if TYPE_CHECKING:
@@ -27,14 +27,14 @@ class AuthenticationMiddleware(BaseMiddleware):
         auth_header: str | None = Headers(scope=scope).get("Authorization")
 
         if not auth_header or not auth_header.startswith("Bearer "):
-            await JSONResponse(status_code=401, content={"detail": "Token not sent in header"})(scope, receive, send)
+            await openai_error(401, "Missing bearer token in the Authorization header.", "invalid_request_error", "invalid_api_key")(scope, receive, send)
             return
 
         token: str = auth_header.removeprefix("Bearer ")
 
         token_value: str | None = await self.redis_repo.get_user_id(token)
         if not token_value:
-            await JSONResponse(status_code=401, content={"detail": "Invalid token"})(scope, receive, send)
+            await openai_error(401, "Invalid, expired or revoked Tollgate token.", "invalid_request_error", "invalid_api_key")(scope, receive, send)
             return
 
         scope.setdefault("state", {})[TOKEN_VALUE_STATE_KEY] = token_value

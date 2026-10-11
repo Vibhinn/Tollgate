@@ -11,7 +11,7 @@ from src.app.exceptions import (
 )
 from src.llm.connection import LLMConnection
 from src.llm.repository.self_hosted_model_repository import SelfHostedModelRepository
-from src.utils.types import Message
+from src.utils.types import Message, GenerationParams
 
 HELLO = [Message(role="user", content="hello")]
 
@@ -35,7 +35,7 @@ class FakeAsyncStream:
 
 def make_stream_chunks(content_pieces, prompt_tokens=12, completion_tokens=34):
     chunks = [
-        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=piece))], usage=None)
+        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=piece), finish_reason=None)], usage=None)
         for piece in content_pieces
     ]
     chunks.append(SimpleNamespace(
@@ -71,7 +71,7 @@ def test_init_fetches_the_connection_registered_for_its_own_alias(monkeypatch):
 async def test_invoke_normalizes_raw_sdk_response(self_hosted_client):
     repo = SelfHostedModelRepository("ollama-llama3")
 
-    result = await repo.invoke(HELLO, "llama3", 4096)
+    result = await repo.invoke(HELLO, "llama3", GenerationParams(max_tokens=4096))
 
     self_hosted_client.chat.completions.create.assert_awaited_once_with(
         model="llama3",
@@ -94,7 +94,7 @@ async def test_invoke_sends_developer_messages_as_system_for_local_servers(self_
     ]
     repo = SelfHostedModelRepository("ollama-llama3")
 
-    await repo.invoke(messages, "llama3", 4096, temperature=0.2)
+    await repo.invoke(messages, "llama3", GenerationParams(max_tokens=4096, temperature=0.2))
 
     call_kwargs = self_hosted_client.chat.completions.create.call_args.kwargs
     assert call_kwargs["messages"] == [
@@ -112,12 +112,12 @@ async def test_invoke_defaults_token_counts_to_zero_when_server_omits_usage(self
     degrade to zero, not crash trying to read a usage field that never
     arrives."""
     self_hosted_client.chat.completions.create.return_value = FakeAsyncStream([
-        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="hi"))], usage=None),
+        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="hi"), finish_reason=None)], usage=None),
         SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=None), finish_reason="stop")], usage=None),
     ])
     repo = SelfHostedModelRepository("apple-fm")
 
-    result = await repo.invoke(HELLO, "apple-fm-model", 1)
+    result = await repo.invoke(HELLO, "apple-fm-model", GenerationParams(max_tokens=1))
 
     assert result.content == "hi"
     assert result.input_tokens == 0
@@ -148,7 +148,7 @@ async def test_invoke_maps_provider_errors_to_domain_exceptions(
     repo = SelfHostedModelRepository("ollama-llama3")
 
     with pytest.raises(expected_domain_exception) as exc_info:
-        await repo.invoke(HELLO, "llama3", 4096)
+        await repo.invoke(HELLO, "llama3", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
 
@@ -161,6 +161,19 @@ async def test_invoke_maps_connection_error_to_api_error(self_hosted_client):
     repo = SelfHostedModelRepository("ollama-llama3")
 
     with pytest.raises(APIError) as exc_info:
-        await repo.invoke(HELLO, "llama3", 4096)
+        await repo.invoke(HELLO, "llama3", GenerationParams(max_tokens=4096))
 
     assert exc_info.value.__cause__ is sdk_exception
+
+
+async def test_invoke_reports_length_when_the_server_cut_the_answer_short(self_hosted_client):
+    self_hosted_client.chat.completions.create.return_value = FakeAsyncStream([
+        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="hi"), finish_reason=None)], usage=None),
+        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=None), finish_reason="length")], usage=None),
+    ])
+
+    result = await SelfHostedModelRepository("ollama-llama3").invoke(HELLO, "llama3", GenerationParams(stop=["END"]))
+
+    assert result.finish_reason == "length"
+    assert self_hosted_client.chat.completions.create.await_args.kwargs["stop"] == ["END"]
+    assert "max_tokens" not in self_hosted_client.chat.completions.create.await_args.kwargs

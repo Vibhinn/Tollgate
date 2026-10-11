@@ -85,7 +85,7 @@ def test_missing_authorization_header_returns_401(build_client):
     response = client.get("/api/v1/chat/completions")
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "No auth token in Header."}
+    assert response.json() == {"error": {"message": "Missing bearer token in the Authorization header.", "type": "invalid_request_error", "param": None, "code": "invalid_api_key"}}
 
 
 def test_allowed_request_passes_through_with_rate_limit_headers(build_client):
@@ -107,7 +107,7 @@ def test_denied_request_returns_429_with_retry_after(build_client):
     response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 
     assert response.status_code == 429
-    assert response.json() == {"detail": "Too many requests. Try again later."}
+    assert response.json() == {"error": {"message": "Too many requests. Try again later.", "type": "rate_limit_error", "param": None, "code": "rate_limit_exceeded"}}
     assert response.headers["X-RateLimit-Limit"] == "10"
     assert response.headers["X-RateLimit-Remaining"] == "0"
     assert "Retry-After" in response.headers

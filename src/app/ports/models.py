@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.utils.types import LLMInvocationResult, Message
+    from src.utils.types import LLMInvocationResult, Message, GenerationParams
 
 class LLMRepositoryInterface(ABC):
     @abstractmethod
     def __init__(self):
         ...
     @abstractmethod
-    async def invoke(self, messages: list[Message], model_name: str, max_tokens: int, temperature: float | None = None) -> "LLMInvocationResult":
+    async def invoke(self, messages: list[Message], model_name: str, params: GenerationParams) -> "LLMInvocationResult":
         ...

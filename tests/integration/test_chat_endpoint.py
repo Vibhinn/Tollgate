@@ -1,104 +1,84 @@
+"""The controller only translates HTTP to an adapter call and back. What happens in between
+(cache, routing) is covered by the adapter and ResponseCache tests."""
 from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from starlette.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
 from src.app.api.chat import chat_api_router
-from src.app.injector.inject import get_chat_adapter
 from src.app.exceptions import ModelSemanticNotFound
+from src.app.exceptions.handlers import ErrorSpec, status_handler, validation_error_handler
+from src.app.injector.inject import get_chat_adapter
+from src.utils.types import LLMInvocationResult, GenerationParams, ChatRequest, Message
+
+LLM_RESULT = LLMInvocationResult("fresh llm reply", input_tokens=12, output_tokens=5, finish_reason="stop",
+                                 model="claude-haiku-4-5")
 
 
 @pytest.fixture
 def chat_adapter():
-    return AsyncMock()
+    adapter = AsyncMock()
+    adapter.complete.return_value = LLM_RESULT
+    return adapter
+
+
+def build_app(chat_adapter) -> FastAPI:
+    app = FastAPI()
+    app.include_router(chat_api_router)
+    app.add_exception_handler(ModelSemanticNotFound,
+                              status_handler(ErrorSpec(404, "invalid_request_error", "model_not_found")))
+    app.add_exception_handler(RequestValidationError, validation_error_handler)
+    app.dependency_overrides[get_chat_adapter] = lambda: chat_adapter
+    return app
 
 
 @pytest.fixture
 def client(chat_adapter):
-    app = FastAPI()
-    app.include_router(chat_api_router)
-
-    @app.exception_handler(ModelSemanticNotFound)
-    async def handle_model_not_found(request, exc):
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    app.dependency_overrides[get_chat_adapter] = lambda: chat_adapter
-    return TestClient(app)
+    return TestClient(build_app(chat_adapter))
 
 
 def chat_body(**overrides):
     body = {
         "model": "cheap",
         "messages": [{"role": "user", "content": "hello there"}],
-        "max_tokens": 4096,
     }
     body.update(overrides)
     return body
 
 
-def test_returns_cached_answer_without_calling_llm(client, chat_adapter):
-    chat_adapter.check_cache.return_value = "cached reply"
-
-    response = client.post("/api/v1/chat/completions", json=chat_body())
-
-    assert response.status_code == 200
-    assert response.json() == {"role": "model", "message": "cached reply"}
-    chat_adapter.query_llm.assert_not_called()
+def sent_request(chat_adapter) -> ChatRequest:
+    return chat_adapter.complete.await_args.kwargs["chat_request"]
 
 
-def test_cache_miss_invokes_llm_and_returns_assistant_message(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
-
-    response = client.post("/api/v1/chat/completions", json=chat_body())
+def test_a_completion_is_returned_in_openai_format(client):
+    response = client.post("/v1/chat/completions", json=chat_body())
 
     assert response.status_code == 200
-    assert response.json() == {"role": "assistant", "message": "fresh llm reply"}
+    assert response.headers["X-Tollgate-Cache"] == "miss"
+    body = response.json()
+    assert body["id"].startswith("chatcmpl-")
+    assert body["object"] == "chat.completion"
+    assert isinstance(body["created"], int)
+    # the model that answered, not the "cheap" policy that was asked for
+    assert body["model"] == "claude-haiku-4-5"
+    assert body["choices"] == [{
+        "index": 0, "message": {"role": "assistant", "content": "fresh llm reply"}, "finish_reason": "stop",
+    }]
+    assert body["usage"] == {"prompt_tokens": 12, "completion_tokens": 5, "total_tokens": 17}
 
 
-def test_no_cache_type_does_not_enqueue_caching_job(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
+def test_a_cache_hit_is_marked_in_the_header(client, chat_adapter):
+    chat_adapter.complete.return_value = LLMInvocationResult("cached reply", 0, 0, model="cheap", cached=True)
 
-    client.post("/api/v1/chat/completions", json=chat_body())
+    response = client.post("/v1/chat/completions", json=chat_body())
 
-    chat_adapter.add_job_to_queue.assert_not_called()
-
-
-def test_cache_type_enqueues_response_cache_job_with_default_ttl(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
-
-    client.post("/api/v1/chat/completions", json=chat_body(cache_type="semantic"))
-
-    chat_adapter.add_job_to_queue.assert_called_once()
-    args, _ = chat_adapter.add_job_to_queue.call_args
-    assert args[0] == "response_cache"
-    job_data = args[1]
-    assert job_data["cache_type"] == "semantic"
-    assert job_data["prompt"] == "hello there"
-    assert job_data["exact_key"].startswith("cache:exact:")
-    assert job_data["model_response"] == "fresh llm reply"
-    assert job_data["timeout"] == 3600
+    assert response.headers["X-Tollgate-Cache"] == "hit"
+    assert response.json()["usage"] == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
-def test_cache_lookup_and_cache_job_use_the_same_keys(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
-
-    client.post("/api/v1/chat/completions", json=chat_body(cache_type="exact"))
-
-    looked_up = chat_adapter.check_cache.call_args.args[0]
-    job_data = chat_adapter.add_job_to_queue.call_args.args[1]
-    assert job_data["exact_key"] == looked_up.exact_key
-    assert job_data["context_hash"] == looked_up.context_hash
-
-
-def test_whole_conversation_and_temperature_reach_the_llm(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
+def test_the_request_reaches_the_adapter_as_a_chat_request(client, chat_adapter):
     messages = [
         {"role": "system", "content": "Reply in French."},
         {"role": "user", "content": "hi"},
@@ -106,60 +86,74 @@ def test_whole_conversation_and_temperature_reach_the_llm(client, chat_adapter):
         {"role": "user", "content": "how are you?"},
     ]
 
-    client.post("/api/v1/chat/completions", json=chat_body(messages=messages, temperature=0.2))
+    client.post("/v1/chat/completions", json=chat_body(
+        messages=messages, temperature=0.2, top_p=0.9, stop="END", max_completion_tokens=64,
+        cache_type="semantic", cache_match_score=0.8,
+    ))
 
-    call_kwargs = chat_adapter.query_llm.call_args.kwargs
-    assert [message.model_dump() for message in call_kwargs["messages"]] == messages
-    assert call_kwargs["temperature"] == 0.2
-
-
-def test_x_cache_ttl_header_overrides_default_timeout(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.return_value = "fresh llm reply"
-
-    client.post(
-        "/api/v1/chat/completions",
-        json=chat_body(cache_type="exact"),
-        headers={"X-Cache-TTL": "120"},
+    assert sent_request(chat_adapter) == ChatRequest(
+        model="cheap",
+        messages=[Message(**message) for message in messages],
+        params=GenerationParams(max_tokens=64, temperature=0.2, top_p=0.9, stop=["END"]),
+        cache_type="semantic",
+        cache_match_score=0.8,
+        cache_ttl=3600,
     )
 
-    job_data = chat_adapter.add_job_to_queue.call_args.args[1]
-    assert job_data["timeout"] == 120
+
+def test_x_cache_ttl_header_sets_the_cache_ttl(client, chat_adapter):
+    client.post("/v1/chat/completions", json=chat_body(cache_type="exact"), headers={"X-Cache-TTL": "120"})
+
+    assert sent_request(chat_adapter).cache_ttl == 120
 
 
-def test_unrecognized_model_request_returns_422(client, chat_adapter):
-    response = client.post("/api/v1/chat/completions", json=chat_body(model="not-a-real-model"))
+@pytest.mark.parametrize("ttl", ["abc", "0", "-5"])
+def test_an_invalid_x_cache_ttl_is_a_400_naming_the_header(client, chat_adapter, ttl):
+    """It used to crash with a 500 (abc) or fail later inside the cache worker (0, -5)."""
+    response = client.post("/v1/chat/completions", json=chat_body(cache_type="exact"), headers={"X-Cache-TTL": ttl})
 
-    assert response.status_code == 422
-    chat_adapter.check_cache.assert_not_called()
-
-
-def test_model_semantic_not_found_is_mapped_to_404(client, chat_adapter):
-    chat_adapter.check_cache.return_value = None
-    chat_adapter.query_llm.side_effect = ModelSemanticNotFound("Sorry, model type smart is not recognized")
-
-    response = client.post("/api/v1/chat/completions", json=chat_body(model="smart"))
-
-    assert response.status_code == 404
-    assert response.json() == {"detail": "Sorry, model type smart is not recognized"}
+    assert response.status_code == 400
+    assert response.json()["error"]["param"] == "X-Cache-TTL"
+    chat_adapter.complete.assert_not_awaited()
 
 
-def test_cache_keys_are_scoped_to_the_user_set_by_auth(chat_adapter):
-    app = FastAPI()
-    app.include_router(chat_api_router)
-    app.dependency_overrides[get_chat_adapter] = lambda: chat_adapter
+def test_the_user_set_by_auth_reaches_the_adapter(chat_adapter):
+    app = build_app(chat_adapter)
 
     @app.middleware("http")
     async def fake_auth(request, call_next):
-        request.scope.setdefault("state", {})["user_id"] = request.headers["X-Test-User"]
+        request.scope.setdefault("state", {})["user_id"] = "payments:alice"
         return await call_next(request)
 
-    chat_adapter.check_cache.return_value = "cached reply"
-    client = TestClient(app)
+    TestClient(app).post("/v1/chat/completions", json=chat_body())
 
-    client.post("/api/v1/chat/completions", json=chat_body(), headers={"X-Test-User": "alice"})
-    client.post("/api/v1/chat/completions", json=chat_body(), headers={"X-Test-User": "bob"})
+    assert chat_adapter.complete.await_args.kwargs["user_id"] == "payments:alice"
 
-    alice_keys, bob_keys = (call.args[0] for call in chat_adapter.check_cache.call_args_list)
-    assert alice_keys.exact_key != bob_keys.exact_key
-    assert alice_keys.context_hash != bob_keys.context_hash
+
+def test_model_not_found_is_an_openai_404(client, chat_adapter):
+    chat_adapter.complete.side_effect = ModelSemanticNotFound("The model 'nope' does not exist.")
+
+    response = client.post("/v1/chat/completions", json=chat_body(model="nope"))
+
+    assert response.status_code == 404
+    assert response.json()["error"] == {
+        "message": "The model 'nope' does not exist.", "type": "invalid_request_error", "param": None,
+        "code": "model_not_found",
+    }
+
+
+def test_an_invalid_request_is_an_openai_400_naming_the_field(client, chat_adapter):
+    response = client.post("/v1/chat/completions", json=chat_body(temperature=5))
+
+    assert response.status_code == 400
+    error = response.json()["error"]
+    assert error["type"] == "invalid_request_error"
+    assert error["param"] == "temperature"
+    chat_adapter.complete.assert_not_awaited()
+
+
+def test_an_unsupported_feature_is_rejected_with_a_readable_message(client):
+    response = client.post("/v1/chat/completions", json=chat_body(stream=True))
+
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == "stream=true is not supported yet"

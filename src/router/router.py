@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import replace
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,8 @@ from src.app.exceptions import (
     ModelSemanticNotFound, APIKeyInvalidOrExpired, CreditExhaustion,
     PermissionDeniedForModel, RateLimitedFromModelProvider, ModelProviderServerError, APIError,
 )
-from src.utils.types import AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message, last_user_message
+from src.utils.types import (AnalyticsJobData, RedisStreamName, ConfigurationSection, ConfigurationOption, Message,
+                             GenerationParams, LLMInvocationResult, last_user_message)
 from src.utils.config import ROUTING_TABLE
 from src.llm import LLMRepositoryFactory
 
@@ -34,8 +36,8 @@ class RouterRepository:
                                         APIError: 30,
                                     }
 
-    async def invoke_model(self, model_name: str, messages: list[Message], max_tokens: int,
-                           model_selection_policy: str | None = None, temperature: float | None = None) -> str:
+    async def invoke_model(self, model_name: str, messages: list[Message], params: GenerationParams,
+                           model_selection_policy: str | None = None) -> LLMInvocationResult:
         model_entry = self.routing_table.get(model_name)
         if not model_entry:
             raise ModelSemanticNotFound(f"Sorry, no such model found: {model_name}")
@@ -50,24 +52,22 @@ class RouterRepository:
 
         try:
             start: float = time.monotonic()
-            model_response = await repository.invoke(messages, real_model_name, max_tokens, temperature)
+            model_response = await repository.invoke(messages, real_model_name, params)
             latency_ms: float = (time.monotonic() - start)*1000
         except tuple(self._TTL_BY_EXCEPTION_MAP) as e:
             ttl: int = self._TTL_BY_EXCEPTION_MAP[type(e)]
             await self.router_adapter.mark_model_unavailable(model_name, ttl)
 
             if model_selection_policy is None:
-                # go out in case the policy based requirement is None, which means model was asked by name
                 raise
 
             fallback_model = await self.get_best_model(
                 model_selection_policy, user_message=last_user_message(messages) if model_selection_policy == "smart" else None
             )
             if fallback_model is None or fallback_model == model_name:
-                #in case the model which is out, was the only best case
                 raise
 
-            return await self.invoke_model(fallback_model, messages, max_tokens, model_selection_policy=None, temperature=temperature)
+            return await self.invoke_model(fallback_model, messages, params, model_selection_policy=None)
 
         analytics_object = AnalyticsJobData(
             model_name=model_name,
@@ -78,7 +78,7 @@ class RouterRepository:
         )
 
         await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore
-        return model_response.content
+        return replace(model_response, model=model_name)
 
     async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:
         if requirement in {"fast", "cheap"}:
@@ -88,19 +88,25 @@ class RouterRepository:
         else:
             return self.config.get_config(ConfigurationSection.GATEWAY, ConfigurationOption.DEFAULT_MODEL)
 
+    def has_model(self, model_name: str) -> bool:
+        entry = self.routing_table.get(model_name)
+        return entry is not None and self.llm_repo_factory.get_repo(entry.get("provider")) is not None
+
+    def available_models(self) -> dict[str, str]:
+        return {
+            model_name: entry.get("provider") for model_name, entry in self.routing_table.items()
+            if self.llm_repo_factory.get_repo(entry.get("provider")) is not None
+        }
+
     async def warm_up_latency_rankings(self) -> None:
         probe_message = [Message(role="user", content="Hi")]
-        candidates = [
-            model_name for model_name, entry in self.routing_table.items()
-            if self.llm_repo_factory.get_repo(entry.get("provider")) is not None
-        ]
+        candidates = list(self.available_models())
 
-        #we are probing simultaneously. To update the EMA rankings. If model is dead, they are blocklisted with TTL
         await asyncio.gather(*(self._probe(model_name, probe_message) for model_name in candidates))
 
 
     async def _probe(self, model_name: str, probe_message: list[Message]) -> None:
         try:
-            await self.invoke_model(model_name, probe_message, max_tokens=1)
+            await self.invoke_model(model_name, probe_message, GenerationParams(max_tokens=1))
         except Exception:
             pass

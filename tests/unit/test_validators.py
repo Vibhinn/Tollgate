@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.app.api.validators import ChatModel
+from src.utils.types import GenerationParams
 
 
 def base_chat_payload(**overrides):
@@ -20,9 +21,57 @@ def test_chat_model_accepts_known_models_and_policies(model):
     assert chat.model == model
 
 
-def test_chat_model_rejects_unknown_model():
-    with pytest.raises(ValidationError, match="Unknown model"):
-        ChatModel(**base_chat_payload(model="not-a-real-model"))
+def test_max_tokens_is_optional_like_in_openai():
+    payload = base_chat_payload()
+    del payload["max_tokens"]
+
+    assert ChatModel(**payload).generation_params().max_tokens is None
+
+
+def test_max_completion_tokens_wins_over_the_deprecated_max_tokens():
+    chat = ChatModel(**base_chat_payload(max_tokens=100, max_completion_tokens=50))
+
+    assert chat.generation_params().max_tokens == 50
+
+
+def test_generation_params_carry_every_sampling_option():
+    chat = ChatModel(**base_chat_payload(temperature=0.3, top_p=0.9, stop="END"))
+
+    assert chat.generation_params() == GenerationParams(max_tokens=4096, temperature=0.3, top_p=0.9, stop=["END"])
+
+
+def test_text_content_parts_are_joined_into_one_string():
+    chat = ChatModel(**base_chat_payload(messages=[
+        {"role": "user", "content": [{"type": "text", "text": "first"}, {"type": "text", "text": "second"}]},
+    ]))
+
+    assert chat.messages[0].content == "first\nsecond"
+
+
+def test_fields_tollgate_does_not_use_are_ignored():
+    chat = ChatModel(**base_chat_payload(
+        user="u-1", seed=7, metadata={"a": "b"}, stream_options=None, n=1, stream=False,
+        response_format={"type": "text"}, messages=[{"role": "user", "content": "hi", "name": "alice"}],
+    ))
+
+    assert chat.messages[0].content == "hi"
+
+
+@pytest.mark.parametrize("unsupported, reason", [
+    ({"stream": True}, "stream"),
+    ({"n": 2}, "n must be 1"),
+    ({"tools": [{"type": "function", "function": {"name": "f"}}]}, "tools"),
+    ({"tool_choice": "auto"}, "tools"),
+    ({"functions": [{"name": "f"}]}, "tools"),
+    ({"response_format": {"type": "json_object"}}, "response_format"),
+    ({"messages": [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": "x"}}]}]}, "image_url"),
+    ({"messages": [{"role": "tool", "content": "42", "tool_call_id": "c1"}]}, "role"),
+    ({"stop": ["a", "b", "c", "d", "e"]}, "at most 4"),
+    ({"max_tokens": 0}, "max_tokens"),
+])
+def test_features_that_would_change_the_answer_are_rejected_not_ignored(unsupported, reason):
+    with pytest.raises(ValidationError, match=reason):
+        ChatModel(**base_chat_payload(**unsupported))
 
 
 def test_chat_model_temperature_defaults_to_none_so_the_provider_default_applies():

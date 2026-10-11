@@ -4,10 +4,10 @@ import asyncio
 import random
 from typing import TYPE_CHECKING
 
-from starlette.responses import JSONResponse
 
 from .base import BaseMiddleware
 from .exemptions import EXEMPT_PATHS
+from src.app.exceptions.handlers import openai_error
 from src.cache import RedisRepository
 from src.utils.config import Config
 from src.utils.types import ConfigurationSection, ConfigurationOption, RedisAtomicCounters
@@ -36,10 +36,7 @@ class BackpressureMiddleware(BaseMiddleware):
         try:
             in_flight: int = await self.redis_repo.increment(RedisAtomicCounters.IN_FLIGHT)
         except Exception:
-            response = JSONResponse(
-                status_code=503,
-                content={"detail": "Temporary downstream outage"}
-            )
+            response = openai_error(503, "Temporary downstream outage.", "server_error", "service_unavailable")
             await response(scope, receive, send)
             return
 
@@ -47,11 +44,8 @@ class BackpressureMiddleware(BaseMiddleware):
             await self.redis_repo.decrement(RedisAtomicCounters.IN_FLIGHT)
             await self.redis_repo.increment(RedisAtomicCounters.SHED)
             retry_after: int = BASE_RETRY_AFTER_SECONDS + random.randint(0, RETRY_AFTER_JITTER_SECONDS)
-            response = JSONResponse(
-                status_code=503,
-                content={"detail": "Gateway is overloaded. Try again shortly."},
-                headers={"Retry-After": str(retry_after)},
-            )
+            response = openai_error(503, "Gateway is overloaded. Try again shortly.", "server_error", "overloaded",
+                                    headers={"Retry-After": str(retry_after)})
             await response(scope, receive, send)
             return
 

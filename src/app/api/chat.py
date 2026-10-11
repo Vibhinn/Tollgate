@@ -1,64 +1,51 @@
-from fastapi import APIRouter, Request, Depends
+import time
+import uuid
+
+from fastapi import APIRouter, Request, Depends, Header
 from fastapi.responses import JSONResponse
 
-from ..injector import get_chat_adapter, get_cache_key_builder
+from ..injector import get_chat_adapter
 
 from ..adapters import ChatAdapter
 from .validators import ChatModel
 from .middleware.base import TOKEN_VALUE_STATE_KEY
-from src.cache.keys import CacheKeyBuilder
-from src.utils.types import CacheJobData, RedisStreamName
+from src.utils.types import LLMInvocationResult
 
-chat_api_router = APIRouter(prefix="/api/v1", tags=["chat"])
+chat_api_router = APIRouter(prefix="/v1", tags=["chat"])
+
+CACHE_STATUS_HEADER = "X-Tollgate-Cache"
+DEFAULT_CACHE_TTL_SECONDS = 3600
+
+
+def chat_completion(result: LLMInvocationResult) -> dict:
+    return {
+        "id": f"chatcmpl-{uuid.uuid4().hex}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": result.model,
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": result.content},
+            "finish_reason": result.finish_reason,
+        }],
+        "usage": {
+            "prompt_tokens": result.input_tokens,
+            "completion_tokens": result.output_tokens,
+            "total_tokens": result.input_tokens + result.output_tokens,
+        },
+    }
+
 
 @chat_api_router.post(path="/chat/completions", tags=["chat"])
 async def chat_complete(request: Request, user_requirement: ChatModel,
-                        chat_adapter: ChatAdapter = Depends(get_chat_adapter),
-                        cache_key_builder: CacheKeyBuilder = Depends(get_cache_key_builder)):
-    
-    requested_model: str = user_requirement.model
-    cache_match_confidence: float = user_requirement.cache_match_score
-    max_tokens: int = user_requirement.max_tokens
-    temperature: float | None = user_requirement.temperature
-
-    cache_keys = cache_key_builder.build_cache_keys(
+                        cache_ttl: int = Header(default=DEFAULT_CACHE_TTL_SECONDS, alias="X-Cache-TTL", gt=0),
+                        chat_adapter: ChatAdapter = Depends(get_chat_adapter)):
+    result = await chat_adapter.complete(
         user_id=request.scope.get("state", {}).get(TOKEN_VALUE_STATE_KEY),
-        model=requested_model,
-        temperature=temperature,
-        messages=user_requirement.messages,
+        chat_request=user_requirement.to_chat_request(cache_ttl),
     )
-
-    search_result = await chat_adapter.check_cache(cache_keys, cache_match_confidence)
-    if search_result:
-        return JSONResponse(
-            status_code=200,
-            content={
-                "role": "model",
-                "message": search_result
-            }
-        )
-
-    model_response = await chat_adapter.query_llm(model_name=requested_model, messages=user_requirement.messages,
-                                                  max_tokens=max_tokens, temperature=temperature)
-
-    if user_requirement.cache_type:
-        caching_timeout_header = request.headers.get("X-Cache-TTL")
-        cache_timeout: int = int(caching_timeout_header) if caching_timeout_header else 3600
-        job_data = CacheJobData(
-            cache_type=user_requirement.cache_type,
-            exact_key=cache_keys.exact_key,
-            context_hash=cache_keys.context_hash,
-            prompt=cache_keys.prompt,
-            model_response=model_response,
-            timeout=cache_timeout
-        )
-
-        await chat_adapter.add_job_to_queue(RedisStreamName.RESPONSE_CACHE, job_data)
-
     return JSONResponse(
         status_code=200,
-        content={
-            "role": "assistant",
-            "message": model_response
-        }
+        content=chat_completion(result),
+        headers={CACHE_STATUS_HEADER: "hit" if result.cached else "miss"},
     )
