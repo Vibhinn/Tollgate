@@ -1,42 +1,9 @@
-from contextlib import asynccontextmanager
-
 import uvicorn
 from fastapi import FastAPI
-from build import Builder
-from src.app.injector import container
-from src.jobs import RedisStreamRepository, MetricsAggregator
-from src.app.migrations import BaseMigration
-from src.router import RouterRepository
-from src.app.intelligence import RoutingIntelligenceLayer
-from src.cache import RedisRepository
-from src.utils.types import RedisAtomicCounters
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    routing_intelligence: RoutingIntelligenceLayer = container.resolve(RoutingIntelligenceLayer)
-    metrics_aggregator: MetricsAggregator | None = None
-    try:
-        scheduler: RedisStreamRepository = container.resolve(RedisStreamRepository)
-        router_repository: RouterRepository = container.resolve(RouterRepository)
-        db_migrations: BaseMigration = container.resolve(BaseMigration)
-        redis_repository: RedisRepository = container.resolve(RedisRepository)
-
-        await db_migrations.run_all()
-        await redis_repository.save(RedisAtomicCounters.IN_FLIGHT, 0)
-        scheduler.start()
-        await router_repository.warm_up_latency_rankings()
-
-        metrics_aggregator = container.resolve(MetricsAggregator)
-        await metrics_aggregator.start()
-
-        yield
-    finally:
-        if metrics_aggregator is not None:
-            metrics_aggregator.stop()
-        routing_intelligence.shutdown()
+from build import Builder, ApplicationLifespan
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=ApplicationLifespan.lifespan)
 builder = Builder(app)
 builder.build_and_initialize_app()
 
