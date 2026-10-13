@@ -73,13 +73,18 @@ class LLMConnection:
     @classmethod
     def get_connection(cls, provider: Literal[LLMProvider.EMBEDDING]) -> StaticModel: ...
 
-    @overload
     @classmethod
-    def get_connection(cls, provider: Literal[LLMProvider.SELF_HOSTED]) -> AsyncOpenAI: ...
-
-    @classmethod
-    def get_connection(cls, provider: LLM_PROVIDER):
+    def get_connection(cls, provider: LLM_PROVIDER) -> AsyncOpenAI | AsyncAnthropic | genai.Client | StaticModel:
         conn = cls._connections.get(provider)
         if not conn:
             raise ValueError(f"Provider {provider} not initialized or unknown")
+        return conn
+
+    @classmethod
+    def get_self_hosted_connection(cls, alias: str) -> AsyncOpenAI:
+        """Self-hosted models are stored under their alias (e.g. "ollama-llama3"), one connection each.
+        A separate method because an alias is any string: as an overload it would also match "openai"."""
+        conn = cls._connections.get(alias)
+        if not conn:
+            raise ValueError(f"Self-hosted model {alias} not initialized or unknown")
         return conn

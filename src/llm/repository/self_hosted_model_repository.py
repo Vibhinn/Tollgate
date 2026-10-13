@@ -16,7 +16,7 @@ from ..formatting import UserRequestFormat, FinishReasonFormat
 class SelfHostedModelRepository(LLMRepositoryInterface):
     @override
     def __init__(self, alias: str):
-        self.self_hosted_model_client = LLMConnection.get_connection(alias)
+        self.self_hosted_model_client = LLMConnection.get_self_hosted_connection(alias)
 
     @override
     async def invoke(self, messages: list[Message], model_name: str, params: GenerationParams) -> LLMInvocationResult:

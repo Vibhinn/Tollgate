@@ -28,7 +28,8 @@ from src.cache.keys import CacheKeyBuilder
 
 from src.jobs import JobQueueConnection
 from src.jobs import RedisStreamRepository, MetricsAggregator
-from src.jobs.helpers import AddToCacheHelper, AnalyticsHelper
+from src.jobs.log_shipper import LogShipper, tune_logging_for_speed
+from src.jobs.helpers import AddToCacheHelper, AnalyticsHelper, LoggingHelper
 
 from src.utils.config import Config
 from src.utils.types import ApplicationRepositoryType, RedisStreamName
@@ -138,6 +139,8 @@ class Builder:
                                                                         container.resolve(RoutingIntelligenceLayer),
                                                                         container.resolve(LLMRepositoryFactory)))
 
+        container.register(LoggingHelper, lambda: LoggingHelper())
+
         container.register(AnalyticsHelper, lambda: AnalyticsHelper(
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.RANKING),
                                                                         container.resolve(RedisMetricsRepository)))
@@ -149,13 +152,16 @@ class Builder:
 
     @staticmethod
     def __setup_job_manager():
-        add_to_cache = container.resolve(AddToCacheHelper)
-
         scheduler = container.resolve(RedisStreamRepository)
+
+        add_to_cache = container.resolve(AddToCacheHelper)
         scheduler.register_helper(RedisStreamName.RESPONSE_CACHE, add_to_cache)
 
         analytics_helper = container.resolve(AnalyticsHelper)
         scheduler.register_helper(RedisStreamName.ANALYTICS, analytics_helper)
+
+        logging_helper = container.resolve(LoggingHelper)
+        scheduler.register_helper(RedisStreamName.LOGGING, logging_helper)
 
     def __register_exception_handlers(self):
         for exception_class, error_spec in self._EXCEPTION_STATUS_CODES.items():
@@ -168,3 +174,11 @@ class Builder:
         CacheConnection.initialize(self.config)
         LLMConnection.initialize(self.config)
         JobQueueConnection.initialize()
+        self.__start_log_shipping()
+
+    def __start_log_shipping(self):
+        # started first, so anything logged while the rest of the app is built is shipped too
+        tune_logging_for_speed()
+        log_shipper = LogShipper(CacheConnection.create_sync_redis(self.config))
+        log_shipper.install()
+        container.register(LogShipper, lambda: log_shipper)

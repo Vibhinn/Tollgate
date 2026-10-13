@@ -57,7 +57,7 @@ class RouterRepository:
         except tuple(self._TTL_BY_EXCEPTION_MAP) as e:
             ttl: int = self._TTL_BY_EXCEPTION_MAP[type(e)]
             await self.router_adapter.mark_model_unavailable(model_name, ttl)
-            await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=AnalyticsJobData( #type: ignore
+            await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=AnalyticsJobData(
                 model_name=model_name, input_tokens=0, output_tokens=0, latency_ms=0.0,
                 timestamp=datetime.now().isoformat(), succeeded=False,
             ))
@@ -82,7 +82,7 @@ class RouterRepository:
             succeeded=True,
         )
 
-        await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object) #type: ignore
+        await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object)
         return replace(model_response, model=model_name)
 
     async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:

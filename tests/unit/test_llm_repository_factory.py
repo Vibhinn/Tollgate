@@ -59,7 +59,7 @@ def test_get_repo_builds_an_isolated_self_hosted_repository_per_alias(fake_confi
     """Regression test: self-hosted models used to all be built under the
     single shared LLMProvider.SELF_HOSTED key in repo_map, so configuring
     more than one would silently overwrite the previous one."""
-    monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, alias: MagicMock()))
+    monkeypatch.setattr(LLMConnection, "get_self_hosted_connection", classmethod(lambda cls, alias: MagicMock()))
     fake_config._data = {
         **fake_config._data,
         "models": {

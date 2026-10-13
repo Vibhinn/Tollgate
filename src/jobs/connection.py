@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import redis
+import redis.asyncio as redis
 
-from typing import overload, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from src.cache import CacheConnection
 from src.utils.types import CacheType, QueueType
@@ -11,18 +11,14 @@ if TYPE_CHECKING:
     from src.utils.types import QUEUE_TYPE
 
 class JobQueueConnection:
-    _redis_stream_conn: redis.Redis = None
+    _redis_stream_conn: redis.Redis | None = None
 
     @classmethod
     def initialize(cls):
         cls._redis_stream_conn = CacheConnection.get_connection(CacheType.EXACT)
 
-    @overload
     @classmethod
-    def get_connection(cls, queue_type: Literal[QueueType.REDIS_STREAM]) -> redis.Redis: ...
-
-    @classmethod
-    def get_connection(cls, queue_type: QUEUE_TYPE):
+    def get_connection(cls, queue_type: QUEUE_TYPE) -> redis.Redis:
         connection_map = {
             QueueType.REDIS_STREAM: cls._redis_stream_conn
         }

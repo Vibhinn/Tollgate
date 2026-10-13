@@ -1,8 +1,10 @@
 name: Publish Docker image
 
+# Images are built only from main: develop is for day-to-day work, and merging into main is the
+# release. Version tags (v1.2.0) also publish, as numbered releases.
 on:
   push:
-    branches: [develop]
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -16,6 +18,8 @@ jobs:
 
   build-and-push:
     needs: test
+    # a manual run started from another branch (e.g. develop) must not publish an image
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -44,11 +48,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # latest follows main explicitly: the default branch is develop, so {{is_default_branch}} would never match
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
         uses: docker/build-push-action@v6

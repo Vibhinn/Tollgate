@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from src.app.injector import container
 from src.jobs import RedisStreamRepository, MetricsAggregator
+from src.jobs.log_shipper import LogShipper
 from src.app.migrations import BaseMigration
 from src.router import RouterRepository
 from src.app.intelligence import RoutingIntelligenceLayer
@@ -35,3 +36,5 @@ class ApplicationLifespan:
         finally:
             metrics_aggregator.stop()
             routing_intelligence.shutdown()
+            # last, so whatever was logged during shutdown is shipped too
+            container.resolve(LogShipper).stop()

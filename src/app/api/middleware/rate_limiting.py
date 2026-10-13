@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import logging
 import math
-import sys
 import time
 from typing import TYPE_CHECKING
 
@@ -13,6 +13,8 @@ from .exemptions import EXEMPT_PATHS
 from src.app.exceptions.handlers import openai_error
 
 from src.app.injector import container
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Scope, Receive, Send, Message
@@ -50,7 +52,7 @@ class RateLimitingMiddleware(BaseMiddleware):
             decision = await self.rate_limiter.acquire(user_id or "unknown")
         except Exception as exc:
             # fail open: a Redis hiccup in the limiter must not turn every request into an error
-            print(f"WARNING: rate limiter unavailable, request let through ({exc!r})", file=sys.stderr)
+            logger.warning("rate limiter unavailable, request let through (%r)", exc)
             await self.app(scope, receive, send)
             return
 

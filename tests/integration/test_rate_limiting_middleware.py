@@ -101,13 +101,15 @@ def test_the_bucket_is_the_user_id_resolved_from_the_token(client, redis_repo, r
     rate_limiter.acquire.assert_awaited_once_with("resolved-user-42")
 
 
-def test_a_limiter_outage_lets_requests_through(client, rate_limiter):
+def test_a_limiter_outage_lets_requests_through_and_logs_a_warning(client, rate_limiter, caplog):
     rate_limiter.acquire.side_effect = ConnectionError("redis down")
 
-    response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
+    with caplog.at_level("WARNING", logger="src.app.api.middleware.rate_limiting"):
+        response = client.get("/api/v1/chat/completions", headers={"Authorization": "Bearer tg_good"})
 
     assert response.status_code == 200
     assert "X-RateLimit-Limit" not in response.headers
+    assert caplog.messages == ["rate limiter unavailable, request let through (ConnectionError('redis down'))"]
 
 
 def test_auth_and_rate_limiting_together_look_the_token_up_once(redis_repo, rate_limiter, test_container, monkeypatch):

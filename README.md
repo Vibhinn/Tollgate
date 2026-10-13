@@ -469,7 +469,7 @@ Tollgate/
 │   ├── unit/
 │   ├── integration/
 │   └── cli/
-└── .github/workflows/           # Tests on push/PR, image publish on develop + tags
+└── .github/workflows/           # Tests on push/PR, image publish on main + version tags
 ```
 
 ---

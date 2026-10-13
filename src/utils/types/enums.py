@@ -28,6 +28,7 @@ class ApplicationRepositoryType(StrEnum):
 class RedisStreamName(StrEnum):
     RESPONSE_CACHE = "response_cache"
     ANALYTICS = "analytics"
+    LOGGING = "logging"
 
 
 class VectorRepositoryCollection(StrEnum):

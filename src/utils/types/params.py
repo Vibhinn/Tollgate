@@ -14,7 +14,7 @@ from .enums import (
     RedisAtomicCounters
 )
 
-REDIS_STREAM_NAMES = Literal[RedisStreamName.RESPONSE_CACHE, RedisStreamName.ANALYTICS]
+REDIS_STREAM_NAMES = Literal[RedisStreamName.RESPONSE_CACHE, RedisStreamName.ANALYTICS, RedisStreamName.LOGGING]
 REPOSITORY_TYPE = Literal[
     ApplicationRepositoryType.EMBEDDING,
     ApplicationRepositoryType.VECTOR_CACHE,

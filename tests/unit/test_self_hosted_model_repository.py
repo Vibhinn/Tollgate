@@ -49,7 +49,7 @@ def make_stream_chunks(content_pieces, prompt_tokens=12, completion_tokens=34):
 def self_hosted_client(monkeypatch):
     client = AsyncMock()
     client.chat.completions.create.return_value = FakeAsyncStream(make_stream_chunks(["hi", " there"]))
-    monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, alias: client))
+    monkeypatch.setattr(LLMConnection, "get_self_hosted_connection", classmethod(lambda cls, alias: client))
     return client
 
 
@@ -59,7 +59,7 @@ def test_init_fetches_the_connection_registered_for_its_own_alias(monkeypatch):
     and llama.cpp) would collide on the same connection. It must look up its
     own alias instead."""
     get_connection = AsyncMock()
-    monkeypatch.setattr(LLMConnection, "get_connection", classmethod(lambda cls, alias: f"connection-for-{alias}"))
+    monkeypatch.setattr(LLMConnection, "get_self_hosted_connection", classmethod(lambda cls, alias: f"connection-for-{alias}"))
 
     ollama_repo = SelfHostedModelRepository("ollama-llama3")
     llamacpp_repo = SelfHostedModelRepository("llamacpp-mistral")

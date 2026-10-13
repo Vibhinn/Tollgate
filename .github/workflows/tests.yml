@@ -4,7 +4,8 @@ on:
   push:
     branches: [develop, experiment]
   pull_request:
-    branches: [develop, experiment]
+    # main included, so a develop -> main pull request shows the test result before you merge
+    branches: [main, develop, experiment]
   workflow_dispatch:
   workflow_call:
 

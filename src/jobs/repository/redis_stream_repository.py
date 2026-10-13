@@ -4,7 +4,7 @@ import asyncio
 import json
 import socket
 import uuid
-from typing import overload, Literal, TYPE_CHECKING
+from typing import Any, Literal, Mapping, overload, TYPE_CHECKING
 
 from src.cache import CacheConnection
 from src.app.ports import JobQueueRepositoryInterface
@@ -13,7 +13,7 @@ from src.app.exceptions import KVCacheNotReachable
 
 if TYPE_CHECKING:
     from ..helpers.base import BaseHelper
-    from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, StreamPayload
+    from src.utils.types import REDIS_STREAM_NAMES, CacheJobData, AnalyticsJobData, RequestEventData, StreamPayload
 
 GROUP_NAME: str = "tollgate-workers"
 MAX_DELIVERIES: int = 5
@@ -24,6 +24,7 @@ READ_BATCH_SIZE: int = 200
 STREAM_MAX_LENGTH: dict[str, int] = {
     RedisStreamName.ANALYTICS: 100_000,
     RedisStreamName.RESPONSE_CACHE: 1_000,
+    RedisStreamName.LOGGING: 100_000,
 }
 
 
@@ -130,12 +131,16 @@ class RedisStreamRepository(JobQueueRepositoryInterface):
             await self.redis_client.xack(stream, GROUP_NAME, entry_id)
 
     @overload
-    async def create_job(self, stream_name: Literal[RedisStreamName.RESPONSE_CACHE], data: CacheJobData) -> None: ...
+    async def create_job(self, collection_name: Literal[RedisStreamName.RESPONSE_CACHE], data: CacheJobData) -> None: ...
 
     @overload
-    async def create_job(self, stream_name: Literal[RedisStreamName.ANALYTICS], data: CacheJobData) -> None: ...
+    async def create_job(self, collection_name: Literal[RedisStreamName.ANALYTICS],
+                         data: AnalyticsJobData | RequestEventData) -> None: ...
 
-    async def create_job(self, stream_name: REDIS_STREAM_NAMES, data: CacheJobData):
+    @overload
+    async def create_job(self, collection_name: Literal[RedisStreamName.LOGGING], data: Mapping[str, Any]) -> None: ...
+
+    async def create_job(self, collection_name: REDIS_STREAM_NAMES, data: Mapping[str, Any]) -> None:
         payload: StreamPayload = {"payload": json.dumps(data)}
-        await self.redis_client.xadd(stream_name, payload, maxlen=STREAM_MAX_LENGTH.get(stream_name, 1_000),  # type: ignore
+        await self.redis_client.xadd(collection_name, payload, maxlen=STREAM_MAX_LENGTH.get(collection_name, 1_000),  # type: ignore
                                      approximate=True)

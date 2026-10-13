@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from src.utils.config import ROUTING_TABLE
 
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from src.app.ports import JobQueueRepositoryInterface, RankingRepositoryInterface
     from src.app.intelligence import RoutingIntelligenceLayer
     from src.llm import LLMRepositoryFactory
-    from src.utils.types import REDIS_STREAM_NAMES
+    from src.utils.types import RedisStreamName, AnalyticsJobData
 
 
 class RouterAdapter:
@@ -24,7 +24,7 @@ class RouterAdapter:
         self.intelligence = intelligence
         self.llm_repo_factory = llm_repo_factory
 
-    async def add_job_to_queue(self, collection_name: "REDIS_STREAM_NAMES", data: dict) -> None:
+    async def add_job_to_queue(self, collection_name: Literal[RedisStreamName.ANALYTICS], data: AnalyticsJobData) -> None:
         await self.job_queue_manager.create_job(collection_name, data)
 
     async def get_best_model(self, requirement: str):

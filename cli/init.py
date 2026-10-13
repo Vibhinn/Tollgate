@@ -31,7 +31,8 @@ def config(change_mode: bool):
         print_configuration()
 
 @cli.command()
-def start():
+@click.option("--console_output", "console_output_enabled", is_flag=True)
+def start(console_output_enabled):
     if not Path("config.yaml").exists():
         error("No config.yaml found. Run: tollgate init")
         sys.exit(1)
@@ -44,8 +45,10 @@ def start():
 
     import uvicorn
     # open metrics streams never finish on their own; without a timeout, shutdown waits for every dashboard to disconnect
-    uvicorn.run("main:app", host="0.0.0.0", port=13000, app_dir=_APP_DIR, timeout_graceful_shutdown=5)
-
+    if console_output_enabled:
+        uvicorn.run("main:app", host="0.0.0.0", port=13000, app_dir=_APP_DIR, timeout_graceful_shutdown=5, access_log=False)
+    else:
+        uvicorn.run("main:app", host="0.0.0.0", port=13000, app_dir=_APP_DIR, timeout_graceful_shutdown=5)
 
 
 
