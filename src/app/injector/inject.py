@@ -1,3 +1,4 @@
+from src.app.helpers.chat_response import TollgateResponseBuilder
 from src.utils.config import Config
 from src.app.injector import container
 
@@ -18,3 +19,6 @@ def get_admin_adapter() -> AdminAdapter:
 
 def get_config_object() -> Config:
     return container.resolve(Config)
+
+def get_tollgate_response_builder() -> TollgateResponseBuilder:
+    return container.resolve(TollgateResponseBuilder)

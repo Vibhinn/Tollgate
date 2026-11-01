@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
+from src.app.helpers.chat_response import TollgateResponseBuilder
 from src.llm import LLMRepositoryFactory
 from src.llm import LLMConnection
 from src.llm import Model2VecRepository
@@ -149,6 +150,8 @@ class Builder:
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.EXACT_CACHE),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.EMBEDDING),
                                                                         container.resolve(ApplicationRepositoryFactory).get_repo(ApplicationRepositoryType.VECTOR_CACHE)))
+
+        container.register(TollgateResponseBuilder, lambda: TollgateResponseBuilder())
 
     @staticmethod
     def __setup_job_manager():
