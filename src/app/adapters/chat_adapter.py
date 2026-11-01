@@ -44,7 +44,7 @@ class ChatAdapter:
             )
             if recommended_model is None:
                 await self._raise_no_model_for(model_name)
-            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages, params=params,
+            return await self.router_repo.invoke_model(model_name=recommended_model, messages=messages, params=params, #type: ignore
                                                        model_selection_policy=model_name)
         else:
             return await self.router_repo.invoke_model(model_name=model_name, messages=messages, params=params)

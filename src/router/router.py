@@ -85,7 +85,7 @@ class RouterRepository:
         await self.router_adapter.add_job_to_queue(collection_name=RedisStreamName.ANALYTICS, data=analytics_object)
         return replace(model_response, model=model_name)
 
-    async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str:
+    async def get_best_model(self, requirement: str, user_message: Message | None = None) -> str | None:
         if requirement in {"fast", "cheap"}:
             return await self.router_adapter.get_best_model(requirement)
         elif requirement in {"smart"}:
