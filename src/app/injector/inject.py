@@ -1,4 +1,4 @@
-from src.app.helpers.chat_response import TollgateResponseBuilder
+from src.app.helpers import TollgateResponseBuilder, MetricsEventsSnapshotManager
 from src.utils.config import Config
 from src.app.injector import container
 
@@ -22,3 +22,6 @@ def get_config_object() -> Config:
 
 def get_tollgate_response_builder() -> TollgateResponseBuilder:
     return container.resolve(TollgateResponseBuilder)
+
+def get_metrics_snapshot_manager() -> MetricsEventsSnapshotManager:
+    return container.resolve(MetricsEventsSnapshotManager)

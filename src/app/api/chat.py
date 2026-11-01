@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, Header
 from fastapi.responses import JSONResponse
 
+from src.app.helpers import TollgateResponseBuilder
 from ..injector import get_chat_adapter, get_tollgate_response_builder
 
 from ..adapters import ChatAdapter
@@ -16,7 +17,7 @@ DEFAULT_CACHE_TTL_SECONDS = 3600
 @chat_api_router.post(path="/chat/completions", tags=["chat"])
 async def chat_complete(request: Request, user_requirement: ChatModel,
                         chat_adapter: ChatAdapter = Depends(get_chat_adapter),
-                        tollgate_response_builder = Depends(get_tollgate_response_builder)):
+                        tollgate_response_builder: TollgateResponseBuilder = Depends(get_tollgate_response_builder)):
 
     cache_ttl = int(request.headers.get("X-Cache-TTL", DEFAULT_CACHE_TTL_SECONDS))
     result = await chat_adapter.complete(

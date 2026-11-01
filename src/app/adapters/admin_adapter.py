@@ -19,7 +19,6 @@ class AdminAdapter:
         self.config = config
         self.token_repo = token_repo
         self._SESSION_TTL_SECONDS = 12 * 60 * 60
-        # sessions are listed by `tollgate token list` under this team and name
         self._SESSION_TEAM = "admin"
         self._SESSION_NAME = "dashboard-session"
 
@@ -36,6 +35,5 @@ class AdminAdapter:
         stored_username = self.config.get_config(ConfigurationSection.ADMIN, ConfigurationOption.USERNAME)
         stored_hash = self.config.get_config(ConfigurationSection.ADMIN, ConfigurationOption.PASSWORD_HASH)
         username_matches = hmac.compare_digest(username.encode(), stored_username.encode())
-        # the hash is deliberately slow (~0.1-0.2s of CPU), so it runs off the event loop
         password_matches = await asyncio.to_thread(verify_password, password, stored_hash)
         return username_matches and password_matches
