@@ -16,11 +16,18 @@ if TYPE_CHECKING:
     from src.utils.types import TokenIdentity, LLMInvocationResult
 
 
-class RequestMetricsMiddleware(BaseMiddleware):
-    """Pushes one event per request to the analytics stream; AnalyticsHelper adds them up.
-    Installed outermost, so it also sees the 401, 429 and 503 the other middlewares send,
-    and reads what they and the endpoint left in the request state."""
+class StatusCapturingSend:
+    def __init__(self, send: Send):
+        self.send = send
+        self.status_code = 500
 
+    async def __call__(self, message: Message) -> None:
+        if message["type"] == "http.response.start":
+            self.status_code = message["status"]
+        await self.send(message)
+
+
+class RequestMetricsMiddleware(BaseMiddleware):
     def __init__(self, app: ASGIApp):
         self.app = app
         self.job_queue: JobQueueRepositoryInterface = container.resolve(RedisStreamRepository)
@@ -30,19 +37,11 @@ class RequestMetricsMiddleware(BaseMiddleware):
             await self.app(scope, receive, send)
             return
 
-        status_code = 500   # if the app raises before responding, the client gets a 500
-
-        async def send_and_capture_status(message: Message) -> None:
-            nonlocal status_code
-            if message["type"] == "http.response.start":
-                status_code = message["status"]
-            await send(message)
-
+        response_send = StatusCapturingSend(send)
         try:
-            await self.app(scope, receive, send_and_capture_status)
+            await self.app(scope, receive, response_send)
         finally:
-            # pushed after the response is sent, so it never delays it
-            await self._push(self._event(status_code, scope.get("state", {})))
+            await self._push(self._event(response_send.status_code, scope.get("state", {})))
 
     @staticmethod
     def _event(status_code: int, state: dict) -> RequestEventData:
@@ -54,7 +53,6 @@ class RequestMetricsMiddleware(BaseMiddleware):
             rejected_by=state.get(REJECTED_BY_STATE_KEY),
             error_code=state.get(ERROR_CODE_STATE_KEY),
             cache_outcome=completion.cache_outcome if completion else None,
-            # a cache hit didn't use a model
             model=completion.model if completion and not completion.cached else None,
             input_tokens=completion.input_tokens if completion else 0,
             output_tokens=completion.output_tokens if completion else 0,
@@ -65,7 +63,6 @@ class RequestMetricsMiddleware(BaseMiddleware):
         )
 
     async def _push(self, event: RequestEventData) -> None:
-        # a metrics outage must never fail the request
         try:
             await self.job_queue.create_job(RedisStreamName.ANALYTICS, event)
         except Exception:
